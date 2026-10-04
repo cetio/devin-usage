@@ -5,6 +5,7 @@
   "version": "0.3.2",
   "private": true,
   "publisher": "cet",
+  "icon": "images/clock-history.png",
   "engines": {
     "vscode": "^1.90.0"
   },
