@@ -2,7 +2,7 @@
   "name": "devin-usage",
   "displayName": "Devin Usage",
   "description": "Shows Codex and Antigravity CLI allowance usage in the status bar.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "publisher": "cet",
   "icon": "images/clock-history.png",
@@ -134,7 +134,7 @@
     "test": "npm run build && tsc -p tsconfig.tests.json && node --test \".test-dist/tests/unit/**/*.js\"",
     "test:integration": "npm run build && tsc -p tsconfig.tests.json && node .devin/runintegration.mjs",
     "package:files": "vsce ls --no-dependencies --ignoreFile .devin/packageignore",
-    "package": "npm run build && vsce package --no-dependencies --ignoreFile .devin/packageignore --out bin/devin-usage-0.3.2.vsix"
+    "package": "npm run build && vsce package --no-dependencies --ignoreFile .devin/packageignore --out bin/devin-usage-0.3.3.vsix"
   },
   "devDependencies": {
     "@types/node": "22.20.4",
