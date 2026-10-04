@@ -48,6 +48,7 @@ export class UsagePicker
         picker.value = "";
         this.render();
         picker.show();
+        void this.refresh(focus?.provider);
     }
 
     update(statuses: ProviderStatus[], context: DisplayContext): void
