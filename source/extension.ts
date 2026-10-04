@@ -229,7 +229,7 @@ async function resolveProvider(value: unknown): Promise<ProviderId | undefined>
             { label: "Codex", provider: "codex" as ProviderId },
             { label: "Antigravity", provider: "antigravity" as ProviderId },
         ],
-        { title: "AI Usage", placeHolder: "Select a provider" },
+        { title: "Devin Usage", placeHolder: "Select a provider" },
     );
     return picked?.provider;
 }
@@ -251,7 +251,7 @@ async function configureCli(provider: ProviderId): Promise<void>
         return;
     if (!isExecutableFile(path))
     {
-        void vscode.window.showWarningMessage(`AI Usage: ${path} is not an executable file.`);
+        void vscode.window.showWarningMessage(`Devin Usage: ${path} is not an executable file.`);
         return;
     }
     await updateSetting(`${provider}.path`, path);
