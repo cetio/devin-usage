@@ -1,24 +1,50 @@
-import { runCli, CliExit } from "../cli";
-import { AdapterError, ConnectionState, ProviderInvocation } from "../usage";
+import { CliExit, runCli } from "../process/runner";
+import type { Version } from "../process/version";
+import { ConnectionState, MetadataEntry, ProviderId, UsagePool } from "../allowance/model";
 
-export function asRecord(value: unknown): Record<string, unknown> | undefined
-{
-    if (typeof value !== "object" || value === null || Array.isArray(value))
-        return undefined;
-    return value as Record<string, unknown>;
-}
+export type ProviderInvocation = {
+    command: string;
+    readArgs: string[];
+    versionArgs: string[];
+    cwd: string;
+    timeoutMs: number;
+    versionTimeoutMs: number;
+};
 
-export function asString(value: unknown): string | undefined
-{
-    if (typeof value !== "string")
-        return undefined;
-    const trimmed = value.trim();
-    return trimmed.length === 0 ? undefined : trimmed;
-}
+export type AdapterResult = {
+    observedAt: number;
+    pools: UsagePool[];
+    metadata: MetadataEntry[];
+};
 
-export function asNumber(value: unknown): number | undefined
+export type ProviderAdapter = {
+    id: ProviderId;
+    label: string;
+    command: string;
+    readArgs: string[];
+    minimumVersion: Version | undefined;
+    version: (signal: AbortSignal) => Promise<string>;
+    read: (signal: AbortSignal) => Promise<AdapterResult>;
+};
+
+export type ProviderSetup = {
+    provider: ProviderId;
+    label: string;
+    enabled: boolean;
+    adapter: ProviderAdapter | undefined;
+    message: string | undefined;
+};
+
+export class AdapterError extends Error
 {
-    return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+    readonly state: ConnectionState;
+
+    constructor(state: ConnectionState, message: string)
+    {
+        super(message);
+        this.name = "AdapterError";
+        this.state = state;
+    }
 }
 
 export function classifyExit(exit: CliExit, label: string): AdapterError

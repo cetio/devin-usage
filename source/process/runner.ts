@@ -1,6 +1,4 @@
 import { ChildProcess, spawn } from "node:child_process";
-import { accessSync, constants, statSync } from "node:fs";
-import { delimiter, isAbsolute, join, relative } from "node:path";
 
 const DEFAULT_MAX_STDOUT_BYTES = 1024 * 1024;
 const DEFAULT_MAX_STDERR_BYTES = 8 * 1024;
@@ -24,10 +22,10 @@ export type CliExit = {
     outputLimitExceeded: boolean;
 };
 
-export type Version = {
-    major: number;
-    minor: number;
-    patch: number;
+export type CliResult = {
+    exit: CliExit;
+    stdout: string;
+    stderr: string;
 };
 
 export class CliProcess
@@ -100,11 +98,6 @@ export class CliProcess
     get pid(): number | undefined
     {
         return this.child.pid;
-    }
-
-    get running(): boolean
-    {
-        return !this.exited;
     }
 
     onLine(handler: (line: string) => void): void
@@ -263,12 +256,6 @@ export class CliProcess
     }
 }
 
-export type CliResult = {
-    exit: CliExit;
-    stdout: string;
-    stderr: string;
-};
-
 export function runCli(command: CliCommand, signal?: AbortSignal): Promise<CliResult>
 {
     return new Promise<CliResult>((resolve) =>
@@ -276,98 +263,4 @@ export function runCli(command: CliCommand, signal?: AbortSignal): Promise<CliRe
         const process = CliProcess.start(command, signal);
         process.onExit((exit) => resolve({ exit, stdout: process.stdout, stderr: process.stderr }));
     });
-}
-
-export type CliResolution = { path: string } | { error: string };
-
-export type ResolveCliOptions = {
-    name: string;
-    configuredPath: string;
-    workspacePaths: string[];
-    environment: NodeJS.ProcessEnv;
-    home: string;
-};
-
-export function resolveCli(options: ResolveCliOptions): CliResolution
-{
-    const configured = options.configuredPath.trim();
-    if (configured.length > 0)
-    {
-        if (!isAbsolute(configured))
-            return { error: `The configured ${options.name} path must be absolute.` };
-        if (!isExecutableFile(configured))
-            return { error: `The configured ${options.name} path is not an executable file.` };
-        return { path: configured };
-    }
-    const candidates: string[] = [join(options.home, ".local", "bin", options.name)];
-    const entries = (options.environment.PATH ?? "").split(delimiter);
-    for (const entry of entries)
-    {
-        if (entry.length === 0 || !isAbsolute(entry))
-            continue;
-        if (isInsideAny(entry, options.workspacePaths))
-            continue;
-        candidates.push(join(entry, options.name));
-    }
-    for (const candidate of candidates)
-    {
-        if (isExecutableFile(candidate))
-            return { path: candidate };
-    }
-    return { error: `The ${options.name} CLI was not found. Install it or set an absolute path in settings.` };
-}
-
-export function isExecutableFile(path: string): boolean
-{
-    try
-    {
-        if (!statSync(path).isFile())
-            return false;
-        accessSync(path, constants.X_OK);
-        return true;
-    }
-    catch
-    {
-        return false;
-    }
-}
-
-function isInsideAny(path: string, parents: string[]): boolean
-{
-    for (const parent of parents)
-    {
-        if (parent.length === 0)
-            continue;
-        const rel = relative(parent, path);
-        if (rel.length === 0 || (!rel.startsWith("..") && !isAbsolute(rel)))
-            return true;
-    }
-    return false;
-}
-
-export function parseVersion(text: string): Version | undefined
-{
-    const match = /(\d+)\.(\d+)\.(\d+)/.exec(text);
-    if (match === null)
-        return undefined;
-    const major = Number(match[1]);
-    const minor = Number(match[2]);
-    const patch = Number(match[3]);
-    if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch))
-        return undefined;
-    return { major, minor, patch };
-}
-
-export function versionAtLeast(version: Version, minimum: Version): boolean
-{
-    if (version.major !== minimum.major)
-        return version.major > minimum.major;
-    if (version.minor !== minimum.minor)
-        return version.minor > minimum.minor;
-    return version.patch >= minimum.patch;
-}
-
-export function formatVersion(version: Version): string
-{
-    return `${version.major}.${version.minor}.${version.patch}`;
 }

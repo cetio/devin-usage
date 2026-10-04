@@ -1,4 +1,4 @@
-import { PoolId, ProviderId } from "./usage";
+import { PoolId, ProviderId } from "./allowance/model";
 
 export type ProviderSettings = {
     enabled: boolean;

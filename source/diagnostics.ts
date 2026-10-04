@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 
-import { RefreshInfo } from "./controller";
-import { formatAge, formatTimestamp } from "./format";
-import { describeState, DisplayContext } from "./presentation";
-import { ProviderStatus } from "./usage";
+import { ProviderStatus } from "./allowance/model";
+import { formatAge, formatTimestamp } from "./allowance/format";
+import { RefreshInfo } from "./monitor";
+import { DisplayContext, describeState } from "./status/display";
 
 const MAX_EVENTS = 50;
 

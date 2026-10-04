@@ -1,16 +1,15 @@
-import { CliProcess } from "../cli";
-import { compareWindows, durationLabel } from "../format";
+import { CliProcess } from "../process/runner";
+import { compareWindows, durationLabel } from "../allowance/format";
+import { ConnectionState, MetadataEntry, UsagePool, UsageWindow } from "../allowance/model";
 import {
     AdapterError,
     AdapterResult,
-    ConnectionState,
-    MetadataEntry,
     ProviderAdapter,
     ProviderInvocation,
-    UsagePool,
-    UsageWindow,
-} from "../usage";
-import { asNumber, asRecord, asString, classifyExit, probeVersion } from "./common";
+    classifyExit,
+    probeVersion,
+} from "./adapter";
+import { asNumber, asRecord, asString } from "./envelope";
 
 const CLIENT_NAME = "devin_usage";
 const CLIENT_TITLE = "Devin Usage";

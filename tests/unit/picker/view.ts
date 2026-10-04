@@ -1,6 +1,6 @@
-import type { PickerCallbacks, UsagePicker } from "../source/quickpick";
-import type { PickAction } from "../source/presentation";
-import { ConnectionState, ProviderId, ProviderStatus } from "../source/usage";
+import type { PickerCallbacks, UsagePicker } from "../../../source/picker/view";
+import type { PickAction } from "../../../source/picker/model";
+import { ConnectionState, ProviderId, ProviderStatus } from "../../../source/allowance/model";
 
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
@@ -109,7 +109,7 @@ const replacement = mock.method(loader, "_load", (request: string, parent: unkno
 {
     return request === "vscode" ? host : load(request, parent, isMain);
 });
-const Picker = (require("../source/quickpick") as { UsagePicker: typeof UsagePicker }).UsagePicker;
+const Picker = (require("../../../source/picker/view") as { UsagePicker: typeof UsagePicker }).UsagePicker;
 replacement.mock.restore();
 
 function statuses(): ProviderStatus[]

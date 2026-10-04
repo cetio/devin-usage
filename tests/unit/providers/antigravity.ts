@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { rmSync } from "node:fs";
 import { test } from "node:test";
 
-import { createAntigravityAdapter, parseUsageReport } from "../source/providers/antigravity";
-import { PROVIDER_SPECS } from "../source/providers/specs";
-import { AdapterError, ConnectionState, ProviderInvocation } from "../source/usage";
-import { agyScript, agyUsageReport, tempDir, writeScript } from "./fixtures";
+import { ConnectionState } from "../../../source/allowance/model";
+import { createAntigravityAdapter, parseUsageReport } from "../../../source/providers/antigravity";
+import { AdapterError, ProviderInvocation } from "../../../source/providers/adapter";
+import { PROVIDER_SPECS } from "../../../source/providers/registry";
+import { agyScript, agyUsageReport, tempDir, writeScript } from "../../support";
 
 const OBSERVED_AT = 1790000000000;
 

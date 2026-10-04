@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 
-import { DisplayContext, statusDisplay } from "./presentation";
-import { DISPLAY_POOLS, PoolId, ProviderStatus } from "./usage";
+import { DISPLAY_POOLS, PoolId, ProviderStatus } from "../allowance/model";
+import { DisplayContext, statusDisplay } from "./display";
 
 const STATUS_ITEM_IDS: Record<PoolId, string> = {
     codex: "devinUsage.codex",

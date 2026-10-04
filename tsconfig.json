@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "node16",
-    "rootDir": ".",
+    "rootDir": "source",
     "outDir": "dist",
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -15,5 +15,5 @@
     "types": ["node"],
     "skipLibCheck": true
   },
-  "include": ["source/**/*.ts", "tests/**/*.ts"]
+  "include": ["source/**/*.ts"]
 }

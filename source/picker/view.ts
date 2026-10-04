@@ -1,15 +1,8 @@
 import * as vscode from "vscode";
 
-import {
-    DisplayContext,
-    managementItems,
-    PickAction,
-    PickItem,
-    PickerFocus,
-    pickerItems,
-    pickerTitle,
-} from "./presentation";
-import { ProviderId, ProviderStatus } from "./usage";
+import { ProviderId, ProviderStatus } from "../allowance/model";
+import { DisplayContext } from "../status/display";
+import { managementItems, PickAction, PickItem, PickerFocus, pickerItems, pickerTitle } from "./model";
 
 export type PickerCallbacks = {
     refreshAll: () => Promise<void>;

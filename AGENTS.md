@@ -48,5 +48,7 @@ devin-desktop --user-data-dir=/tmp/devin-usage-dev --extensions-dir=/tmp/devin-u
 TypeScript follows the conventions used in `~/Repos/autonom`: four-space
 indentation, Allman braces, double quotes, camelCase functions, PascalCase
 types, `ret` for explicit return values, `source/` for code, `tests/` for tests,
-and `dist/` for build output. Do not add comments unless they carry protocol
-information that names cannot.
+and `dist/` for build output. Group source modules by domain, mirror those
+folders under `tests/unit/`, keep shared fixtures in `tests/support.ts`, and
+put host checks in `tests/integration/`. Do not add comments unless they carry
+protocol information that names cannot.

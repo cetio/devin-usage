@@ -1,15 +1,15 @@
-import { runCli } from "../cli";
-import { compareWindows } from "../format";
+import { runCli } from "../process/runner";
+import { compareWindows } from "../allowance/format";
+import { ConnectionState, UsagePool, UsageWindow } from "../allowance/model";
 import {
     AdapterError,
     AdapterResult,
-    ConnectionState,
     ProviderAdapter,
     ProviderInvocation,
-    UsagePool,
-    UsageWindow,
-} from "../usage";
-import { asNumber, asRecord, asString, classifyExit, probeVersion } from "./common";
+    classifyExit,
+    probeVersion,
+} from "./adapter";
+import { asNumber, asRecord, asString } from "./envelope";
 
 const MAX_STDOUT_BYTES = 1024 * 1024;
 const TOKEN_COUNTER_KEYS = ["input_tokens", "output_tokens", "thinking_tokens", "cache_read_tokens", "total_tokens"];

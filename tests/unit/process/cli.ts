@@ -4,16 +4,10 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { test } from "node:test";
 
-import {
-    CliProcess,
-    CliResolution,
-    formatVersion,
-    parseVersion,
-    resolveCli,
-    runCli,
-    versionAtLeast,
-} from "../source/cli";
-import { tempDir, writeScript } from "./fixtures";
+import { CliProcess, runCli } from "../../../source/process/runner";
+import { CliResolution, resolveCli } from "../../../source/process/discovery";
+import { formatVersion, parseVersion, versionAtLeast } from "../../../source/process/version";
+import { tempDir, writeScript } from "../../support";
 
 const SLEEP_SCRIPT = `
 setTimeout(() => process.exit(0), 5000);

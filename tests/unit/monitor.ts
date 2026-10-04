@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { TimerHandle, UsageController } from "../source/controller";
-import { Version } from "../source/cli";
-import { AdapterError, AdapterResult, ConnectionState, ProviderAdapter, ProviderSetup } from "../source/usage";
+import { AdapterError, AdapterResult, ProviderAdapter, ProviderSetup } from "../../source/providers/adapter";
+import { ConnectionState } from "../../source/allowance/model";
+import { UsageController, TimerHandle } from "../../source/monitor";
+import { Version } from "../../source/process/version";
 
 class FakeTimers
 {

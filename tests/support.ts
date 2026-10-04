@@ -1,3 +1,15 @@
+import {
+    ConnectionState,
+    DISPLAY_POOLS,
+    DisplayPool,
+    PoolId,
+    ProviderSnapshot,
+    ProviderStatus,
+    UsagePool,
+    UsageWindow,
+} from "../source/allowance/model";
+import type { DisplayContext } from "../source/status/display";
+
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -227,4 +239,84 @@ export function agyUsageReport(options: {
     if (options.includeCommand !== false)
         ret.command = { name: "usage", data: { description: "", groups } };
     return ret;
+}
+
+export const TEST_NOW = 1000;
+export const TEST_CONTEXT: DisplayContext = { now: TEST_NOW, staleAfterMs: 600000 };
+
+export function testDisplayPool(id: PoolId): DisplayPool
+{
+    const ret = DISPLAY_POOLS.find((candidate) => candidate.id === id);
+    if (ret === undefined)
+        throw new Error(`Missing display pool: ${id}`);
+    return ret;
+}
+
+export function testWindow(
+    id: string,
+    label: string,
+    usedPercent: number,
+    durationMinutes?: number,
+    resetsAt?: number,
+): UsageWindow
+{
+    return { id, label, usedPercent, durationMinutes, resetsAt };
+}
+
+export function testPool(id: string, label: string, windows: UsageWindow[], description?: string): UsagePool
+{
+    return { id, label, description, windows };
+}
+
+export function testSnapshot(usedPercent: number): ProviderSnapshot
+{
+    return {
+        observedAt: TEST_NOW,
+        pools: [testPool("codex", "Codex", [testWindow("codex:primary", "5h", usedPercent, 300)])],
+        metadata: [],
+    };
+}
+
+export function testStatus(changes: Partial<ProviderStatus> = {}): ProviderStatus
+{
+    return {
+        provider: "codex",
+        label: "Codex",
+        state: ConnectionState.Ready,
+        message: undefined,
+        cliVersion: "0.160.0",
+        snapshot: {
+            observedAt: TEST_NOW,
+            pools: [testPool("codex", "Codex", [
+                testWindow("codex:primary", "5h", 3, 300, TEST_NOW + 4 * 3600000),
+                testWindow("codex:secondary", "Weekly", 16, 10080, TEST_NOW + 6 * 86400000 + 6 * 3600000),
+            ])],
+            metadata: [{ label: "Plan", value: "plus" }],
+        },
+        refreshing: false,
+        lastAttemptAt: TEST_NOW,
+        lastSuccessAt: TEST_NOW - 100,
+        ...changes,
+    };
+}
+
+export function testAntigravityStatus(changes: Partial<ProviderStatus> = {}): ProviderStatus
+{
+    return testStatus({
+        provider: "antigravity",
+        label: "Antigravity",
+        cliVersion: "1.2.16",
+        snapshot: {
+            observedAt: TEST_NOW,
+            pools: [
+                testPool("gemini", "Gemini Models", [
+                    testWindow("gemini-weekly", "weekly", 16, 10080, TEST_NOW + 6 * 86400000 + 6 * 3600000),
+                    testWindow("gemini-5h", "5h", 3, 300, TEST_NOW + 4 * 3600000),
+                ], "Models within this group: Gemini Flash, Gemini Pro"),
+                testPool("other", "Claude and GPT models", [testWindow("3p-5h", "5h", 0, 300)]),
+            ],
+            metadata: [],
+        },
+        ...changes,
+    });
 }

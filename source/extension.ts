@@ -1,18 +1,18 @@
-import * as vscode from "vscode";
+import { isExecutableFile, resolveCli } from "./process/discovery";
+import { normalizeSettings, refreshIntervalMs, staleAfterMs, UsageSettings } from "./settings";
+import { UsageController } from "./monitor";
+import { Diagnostics } from "./diagnostics";
+import { DisplayContext } from "./status/display";
+import { PROVIDER_SPECS } from "./providers/registry";
+import { UsagePicker } from "./picker/view";
+import { StatusBarView } from "./status/items";
+import { ProviderId, ProviderStatus } from "./allowance/model";
+import { ProviderSetup } from "./providers/adapter";
 
+import * as vscode from "vscode";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-
-import { isExecutableFile, resolveCli } from "./cli";
-import { normalizeSettings, refreshIntervalMs, staleAfterMs, UsageSettings } from "./configuration";
-import { UsageController } from "./controller";
-import { Diagnostics } from "./diagnostics";
-import { DisplayContext } from "./presentation";
-import { PROVIDER_SPECS } from "./providers/specs";
-import { UsagePicker } from "./quickpick";
-import { StatusBarView } from "./statusbar";
-import { ProviderId, ProviderSetup, ProviderStatus } from "./usage";
 
 const CHATGPT_USAGE_URL = "https://chatgpt.com/settings/usage?tab=overview";
 const SETTINGS_QUERY = "@ext:cet.devin-usage";
@@ -229,7 +229,7 @@ async function resolveProvider(value: unknown): Promise<ProviderId | undefined>
             { label: "Codex", provider: "codex" as ProviderId },
             { label: "Antigravity", provider: "antigravity" as ProviderId },
         ],
-        { title: "Devin Usage", placeHolder: "Select a provider" },
+        { title: "AI Usage", placeHolder: "Select a provider" },
     );
     return picked?.provider;
 }
@@ -251,7 +251,7 @@ async function configureCli(provider: ProviderId): Promise<void>
         return;
     if (!isExecutableFile(path))
     {
-        void vscode.window.showWarningMessage(`Devin Usage: ${path} is not an executable file.`);
+        void vscode.window.showWarningMessage(`AI Usage: ${path} is not an executable file.`);
         return;
     }
     await updateSetting(`${provider}.path`, path);

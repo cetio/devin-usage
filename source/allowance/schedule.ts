@@ -1,4 +1,4 @@
-import { ConnectionState, ProviderSnapshot, ProviderStatus } from "./usage";
+import { ConnectionState, ProviderSnapshot, ProviderStatus } from "./model";
 
 export const MAX_BACKOFF_MS = 30 * 60 * 1000;
 

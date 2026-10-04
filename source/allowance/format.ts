@@ -1,4 +1,4 @@
-import type { UsagePool, UsageWindow } from "./usage";
+import type { UsagePool, UsageWindow } from "./model";
 
 const MAX_LABEL_LENGTH = 48;
 

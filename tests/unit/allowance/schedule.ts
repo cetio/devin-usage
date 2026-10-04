@@ -9,8 +9,8 @@ import {
     isTerminal,
     MAX_BACKOFF_MS,
     snapshotIsStale,
-} from "../source/schedule";
-import { ConnectionState, ProviderSnapshot, ProviderStatus, UsageWindow } from "../source/usage";
+} from "../../../source/allowance/schedule";
+import { ConnectionState, ProviderSnapshot, ProviderStatus, UsageWindow } from "../../../source/allowance/model";
 
 function window(id: string, resetsAt: number | undefined): UsageWindow
 {

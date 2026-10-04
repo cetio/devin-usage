@@ -14,8 +14,8 @@ import {
     remainingPercent,
     sanitizeLabel,
     windowAbbreviation,
-} from "../source/format";
-import { UsagePool, UsageWindow } from "../source/usage";
+} from "../../../source/allowance/format";
+import { UsagePool, UsageWindow } from "../../../source/allowance/model";
 
 function window(id: string, usedPercent: number, durationMinutes?: number): UsageWindow
 {

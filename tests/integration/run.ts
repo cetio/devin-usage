@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import * as vscode from "vscode";
 
-import { ConnectionState } from "../../source/usage";
+import { ConnectionState } from "../../source/allowance/model";
 import type { ExtensionApi } from "../../source/extension";
 
 const COMMANDS = [

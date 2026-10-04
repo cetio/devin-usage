@@ -1,5 +1,3 @@
-import type { Version } from "./cli";
-
 export type ProviderId = "codex" | "antigravity";
 
 export type PoolId = "codex" | "gemini" | "other";
@@ -61,51 +59,6 @@ export type DisplayPool = {
     provider: ProviderId;
     poolId: string;
 };
-
-export type ProviderInvocation = {
-    command: string;
-    readArgs: string[];
-    versionArgs: string[];
-    cwd: string;
-    timeoutMs: number;
-    versionTimeoutMs: number;
-};
-
-export type AdapterResult = {
-    observedAt: number;
-    pools: UsagePool[];
-    metadata: MetadataEntry[];
-};
-
-export type ProviderAdapter = {
-    id: ProviderId;
-    label: string;
-    command: string;
-    readArgs: string[];
-    minimumVersion: Version | undefined;
-    version: (signal: AbortSignal) => Promise<string>;
-    read: (signal: AbortSignal) => Promise<AdapterResult>;
-};
-
-export type ProviderSetup = {
-    provider: ProviderId;
-    label: string;
-    enabled: boolean;
-    adapter: ProviderAdapter | undefined;
-    message: string | undefined;
-};
-
-export class AdapterError extends Error
-{
-    readonly state: ConnectionState;
-
-    constructor(state: ConnectionState, message: string)
-    {
-        super(message);
-        this.name = "AdapterError";
-        this.state = state;
-    }
-}
 
 export const DISPLAY_POOLS: DisplayPool[] = [
     { id: "codex", label: "Codex", provider: "codex", poolId: "codex" },

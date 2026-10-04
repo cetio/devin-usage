@@ -1,4 +1,5 @@
-import { ProviderAdapter, ProviderId, ProviderInvocation } from "../usage";
+import { ProviderId } from "../allowance/model";
+import { ProviderAdapter, ProviderInvocation } from "./adapter";
 import { createAntigravityAdapter } from "./antigravity";
 import { createCodexAdapter } from "./codex";
 
@@ -29,11 +30,3 @@ export const PROVIDER_SPECS: ProviderSpec[] = [
         create: (invocation) => createAntigravityAdapter(invocation),
     },
 ];
-
-export function findSpec(provider: ProviderId): ProviderSpec
-{
-    const spec = PROVIDER_SPECS.find((candidate) => candidate.id === provider);
-    if (spec === undefined)
-        throw new Error(`Unknown provider: ${provider}`);
-    return spec;
-}
