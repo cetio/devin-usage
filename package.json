@@ -13,7 +13,7 @@
   "categories": [
     "Other"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/source/extension.js",
   "extensionKind": [
     "ui"
   ],
@@ -132,8 +132,8 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && tsc -p tsconfig.tests.json && node --test \".test-dist/tests/unit/**/*.js\"",
-    "test:integration": "npm run build && tsc -p tsconfig.tests.json && node .devin/runintegration.mjs",
+    "test": "npm run build && node --test \"dist/tests/unit/**/*.js\"",
+    "test:integration": "npm run build && node .devin/runintegration.mjs",
     "package:files": "vsce ls --no-dependencies --ignoreFile .devin/packageignore",
     "package": "npm run build && vsce package --no-dependencies --ignoreFile .devin/packageignore --out bin/devin-usage-0.3.3.vsix"
   },
