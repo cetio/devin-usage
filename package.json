@@ -1,0 +1,145 @@
+{
+  "name": "devin-usage",
+  "displayName": "Devin Usage",
+  "description": "Shows Codex and Antigravity CLI allowance usage in the status bar.",
+  "version": "0.3.1",
+  "private": true,
+  "publisher": "cet",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/source/extension.js",
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Usage monitoring is paused until the workspace is trusted. Status-bar connection information remains visible."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "devinUsage.showUsage",
+        "title": "Show Usage",
+        "category": "Devin Usage"
+      },
+      {
+        "command": "devinUsage.refreshAll",
+        "title": "Refresh All",
+        "category": "Devin Usage"
+      },
+      {
+        "command": "devinUsage.retry",
+        "title": "Retry Connection",
+        "category": "Devin Usage"
+      },
+      {
+        "command": "devinUsage.configureCli",
+        "title": "Configure CLI Path",
+        "category": "Devin Usage"
+      },
+      {
+        "command": "devinUsage.openSettings",
+        "title": "Open Settings",
+        "category": "Devin Usage"
+      },
+      {
+        "command": "devinUsage.showDiagnostics",
+        "title": "Show Diagnostics",
+        "category": "Devin Usage"
+      },
+      {
+        "command": "devinUsage.openChatGptUsage",
+        "title": "Open ChatGPT Usage Page",
+        "category": "Devin Usage"
+      }
+    ],
+    "configuration": {
+      "title": "Devin Usage",
+      "properties": {
+        "devinUsage.codex.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show Codex subscription allowance in the status bar."
+        },
+        "devinUsage.codex.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Absolute path to the codex CLI. Leave empty to search PATH and ~/.local/bin."
+        },
+        "devinUsage.antigravity.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show Antigravity CLI allowance in the status bar."
+        },
+        "devinUsage.antigravity.path": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Absolute path to the agy CLI. Leave empty to search PATH and ~/.local/bin."
+        },
+        "devinUsage.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 300,
+          "minimum": 0,
+          "scope": "application",
+          "description": "Seconds between background refreshes. 0 refreshes at startup and on request only. Values between 1 and 59 are raised to 60."
+        },
+        "devinUsage.statusBar.alignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "default": "right",
+          "scope": "application",
+          "description": "Status-bar side for the usage items."
+        },
+        "devinUsage.statusBar.showCodex": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show the Codex status-bar item."
+        },
+        "devinUsage.statusBar.showGemini": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show the Antigravity Gemini status-bar item."
+        },
+        "devinUsage.statusBar.showOther": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Show the Antigravity Other Models status-bar item."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test \"dist/tests/*.test.js\"",
+    "test:integration": "npm run build && node .devin/runintegration.mjs",
+    "package:files": "vsce ls --no-dependencies --ignoreFile .devin/packageignore",
+    "package": "npm run build && vsce package --no-dependencies --ignoreFile .devin/packageignore"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "@types/vscode": "1.90.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "typescript": "7.0.2"
+  }
+}

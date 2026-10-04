@@ -1,0 +1,58 @@
+import * as assert from "node:assert/strict";
+import { writeFileSync } from "node:fs";
+import * as vscode from "vscode";
+
+import { ConnectionState } from "../../source/usage";
+import type { ExtensionApi } from "../../source/extension";
+
+const COMMANDS = [
+    "devinUsage.showUsage",
+    "devinUsage.refreshAll",
+    "devinUsage.retry",
+    "devinUsage.configureCli",
+    "devinUsage.openSettings",
+    "devinUsage.showDiagnostics",
+    "devinUsage.openChatGptUsage",
+];
+
+export async function run(): Promise<void>
+{
+    const extension = vscode.extensions.getExtension("cet.devin-usage");
+    assert.ok(extension !== undefined, "the Devin Usage extension is installed");
+    const api = await extension.activate() as ExtensionApi;
+    assert.ok(api !== undefined, "the extension exposes its status API");
+
+    const commands = await vscode.commands.getCommands(true);
+    for (const command of COMMANDS)
+        assert.ok(commands.includes(command), `${command} is registered`);
+
+    await vscode.commands.executeCommand("devinUsage.refreshAll");
+    await waitFor(() => api.statuses().every((status) => status.state === ConnectionState.Ready), 30000);
+
+    const statuses = api.statuses();
+    assert.equal(statuses.length, 2);
+    const codex = statuses.find((status) => status.provider === "codex");
+    const antigravity = statuses.find((status) => status.provider === "antigravity");
+    assert.ok(codex !== undefined && antigravity !== undefined);
+    assert.deepEqual(codex.snapshot?.pools.map((pool) => pool.id), ["codex"]);
+    assert.deepEqual(antigravity.snapshot?.pools.map((pool) => pool.id), ["gemini", "other"]);
+    assert.equal(codex.cliVersion, "0.160.0");
+    assert.equal(antigravity.cliVersion, "1.2.16");
+    assert.ok((codex.snapshot?.pools[0]?.windows.length ?? 0) >= 2);
+
+    const resultFile = process.env.DEVIN_USAGE_RESULT_FILE;
+    if (resultFile !== undefined)
+        writeFileSync(resultFile, `${JSON.stringify({ ok: true, statuses: statuses.length })}\n`);
+}
+
+async function waitFor(predicate: () => boolean, timeoutMs: number): Promise<void>
+{
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline)
+    {
+        if (predicate())
+            return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error("Timed out waiting for the extension host state");
+}
