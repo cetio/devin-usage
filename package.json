@@ -3,6 +3,7 @@
   "displayName": "Devin Usage",
   "description": "Shows Codex and Antigravity CLI allowance usage in the status bar.",
   "version": "0.3.3",
+  "license": "MIT",
   "private": true,
   "publisher": "cet",
   "icon": "images/clock-history.png",
