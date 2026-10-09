@@ -53,13 +53,39 @@ permissions, and client capabilities without rebuilding the conversation.
 
 The shim marks its presence in-band: the `initialize` response `agentInfo`
 gains `title: "Antigravity (Devin shim)"` and a `+devin-shim` version suffix,
-a `/devin-shim` command is merged into `available_commands_update` and answered
-locally (no model call) with bridge status, and `--debug`/`--debug-log` writes
-a JSONL traffic log to `~/.local/state/devin-better-acp/antigravity-acp.jsonl`.
+a `/devin-shim` command is merged into `available_commands_update` (with
+`_meta.cognition.ai/category: "System"`) and answered locally (no model call)
+with bridge status, and `--debug`/`--debug-log` writes a JSONL traffic log to
+`~/.local/state/devin-better-acp/antigravity-acp.jsonl`.
 `--devin-config` merges MCP servers from `<workspace>/.devin/mcp_config*.json`,
 `<workspace>/.devin/config.json`, and `~/.config/devin/` (JSONC tolerated) into
 `session/new` and `session/load`, so Antigravity sees the same tools as Devin
-Local; client-supplied `mcpServers` always win on name conflicts.
+Local; client-supplied `mcpServers` always win on name conflicts, `disabled`
+entries are skipped, and the initialize result advertises
+`_meta.mcpConfigPath` pointing at `~/.config/devin/mcp_config.json`.
+
+For rendering parity with Devin Local the shim synthesizes a
+`session_info_update` (prompt-text title, once per session) since Antigravity
+never emits one, and maps Antigravity `rawOutput` onto the Devin terminal
+fields: `execute` `tool_call`s gain `_meta.terminal_info`, and
+`tool_call_update`s gain `_meta.terminal_output` (`{terminal_id, data}` from
+`combinedOutput`/`formatted_output`, or the raw string on failure) and
+`_meta.terminal_exit` (`{terminal_id, exit_code}`) — the accumulated
+`terminal_output.data` renders inline in `ExecuteToolCall`. Tool frames also
+gain `_meta.cognition.ai/inferenceToolName` (`execute`→`exec`, `search`→`grep`,
+other kinds pass through; `think`/`other`/`switch_mode` are skipped) matching
+the field Devin Local puts on every tool frame. Do not add `{type: "terminal"}`
+content blocks: they route rendering to the v2 terminal stream
+(`terminal_update`/`terminal_output_chunk` events keyed by
+`cognition.ai/eventId`), which the shim does not emit.
+
+Measured against `devin acp` (SWE-2): Devin Local puts no stdout in frames
+either — its exec calls stream the command into a `text/x-shellscript` preview
+content block and report `"Exited with code N"`, while real output lives in the
+client-owned terminal (`terminal/create`/`terminal/output` RPCs that
+Antigravity never issues; it executes internally). Antigravity `read`/`edit`
+updates carry no result body, so no "N lines" summary is possible without
+interposing `fs/*` results — out of scope.
 
 The registry `icon` must be an `http(s)` URL — Devin Desktop ignores `data:`
 URIs and requires `Content-Type: image/svg+xml`. `images/antigravity-acp.svg`

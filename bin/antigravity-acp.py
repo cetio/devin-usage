@@ -171,11 +171,20 @@ def merge_mcp_servers(parameters: dict) -> list[str]:
     return [server["name"] for server in added]
 
 
+INFERENCE_NAMES = {
+    "execute": "exec",
+    "search": "grep",
+}
+
+
 def terminal_meta(update: dict, tool_kinds: dict) -> dict | None:
     tool_call_id = update.get("toolCallId")
     if not isinstance(tool_call_id, str) or not tool_call_id:
         return None
-    ret: dict[str, dict] = {}
+    ret: dict[str, object] = {}
+    kind = update.get("kind") or tool_kinds.get(tool_call_id)
+    if isinstance(kind, str) and kind not in ("think", "other", "switch_mode"):
+        ret["cognition.ai/inferenceToolName"] = INFERENCE_NAMES.get(kind, kind)
     if update.get("sessionUpdate") == "tool_call":
         if update.get("kind") == "execute":
             ret["terminal_info"] = {"terminal_id": tool_call_id}
@@ -264,7 +273,10 @@ class Bridge:
         self.lock = threading.Lock()
         self.interrupted = False
         self.pending: dict[int | str, str] = {}
+        self.prompt_sessions: dict[int | str, str] = {}
+        self.cancelled_prompts: set[int | str] = set()
         self.tool_kinds: dict[str, str] = {}
+        self.titled_sessions: set[str] = set()
         self.frames_up = 0
         self.frames_down = 0
         self.started = time.monotonic()
@@ -348,12 +360,49 @@ class Bridge:
         }))
         return True
 
+    def emit_session_title(self, message: dict) -> None:
+        parameters = message.get("params")
+        if not isinstance(parameters, dict):
+            return
+        session_id = parameters.get("sessionId")
+        if not isinstance(session_id, str) or session_id in self.titled_sessions:
+            return
+        blocks = parameters.get("prompt")
+        if not isinstance(blocks, list):
+            return
+        title = next(
+            (block["text"].strip() for block in blocks
+             if isinstance(block, dict) and block.get("type") == "text"
+             and isinstance(block.get("text"), str) and block["text"].strip()),
+            "",
+        )
+        if not title:
+            return
+        self.titled_sessions.add(session_id)
+        title = title.splitlines()[0]
+        if len(title) > 80:
+            title = title[:80].rsplit(" ", 1)[0]
+        self.log("shim", {"event": "session_info_update", "sessionId": session_id, "title": title})
+        self.send_client(dump({
+            "jsonrpc": "2.0",
+            "method": "session/update",
+            "params": {
+                "sessionId": session_id,
+                "update": {
+                    "sessionUpdate": "session_info_update",
+                    "title": title,
+                },
+            },
+        }))
+
     def from_client(self, frame: bytes) -> bytes | None:
         message = decode_frame(frame)
         self.frames_up += 1
         self.log("c2a", message)
-        if message.get("method") == "session/prompt" and self.run_shim_command(message):
-            return None
+        if message.get("method") == "session/prompt":
+            if self.run_shim_command(message):
+                return None
+            self.emit_session_title(message)
         if "method" in message and message.get("id") is not None:
             self.pending[message["id"]] = message["method"]
         parameters = message.get("params")
@@ -384,6 +433,10 @@ class Bridge:
                     version = info.get("version")
                     info["version"] = version + f"+devin-shim-{VERSION}" if isinstance(version, str) else VERSION
                     result["agentInfo"] = info
+                    if self.devin_config:
+                        meta = result.setdefault("_meta", {})
+                        if isinstance(meta, dict):
+                            meta.setdefault("mcpConfigPath", str(Path.home() / ".config/devin/mcp_config.json"))
                     return dump(message)
             return frame
         if message.get("method") == "session/update":
@@ -415,6 +468,7 @@ class Bridge:
                     commands.append({
                         "name": SHIM_COMMAND,
                         "description": "Show Devin shim bridge status (answered locally, no model call)",
+                        "_meta": {"cognition.ai/category": "System"},
                     })
                     self.log("shim", {
                         "event": "command_merged",

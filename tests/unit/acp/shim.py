@@ -27,6 +27,7 @@ def send(message):
 
 
 pending = None
+turns = {}
 for line in sys.stdin.buffer:
     message = json.loads(line)
     method = message.get("method")
@@ -53,8 +54,21 @@ for line in sys.stdin.buffer:
         send({"jsonrpc": "2.0", "id": message["id"], "result": {"pid": os.getpid()}})
         while True:
             time.sleep(1)
+    elif method == "session/prompt" and message.get("params", {}).get("cancelFixture") is True:
+        session_id = message["params"]["sessionId"]
+        turns[session_id] = message["id"]
+        send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": session_id, "update": {
+            "sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Partial response"}}}})
     elif method == "session/cancel":
         send({"jsonrpc": "2.0", "method": "test/cancelled", "params": message["params"]})
+        session_id = message["params"]["sessionId"]
+        if session_id in turns:
+            send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": session_id, "update": {
+                "sessionUpdate": "usage_update", "used": 12, "size": 100}}})
+            send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": session_id, "update": {
+                "sessionUpdate": "agent_message_chunk", "content": {
+                    "type": "text", "text": "The request was cancelled by the client."}}}})
+            send({"jsonrpc": "2.0", "id": turns.pop(session_id), "result": {"stopReason": "cancelled"}})
     else:
         result = {"request": message, "arguments": sys.argv[1:], "cwd": os.getcwd()}
         if method == "initialize":
@@ -243,7 +257,31 @@ class ShimTests(unittest.TestCase):
             "params": {"sessionId": "s", "prompt": [{"type": "text", "text": "hello"}]},
         }
         probe.send(request)
+        update = probe.receive()["params"]["update"]
+        self.assertEqual(update, {"sessionUpdate": "session_info_update", "title": "hello"})
         self.assertEqual(probe.receive()["result"]["request"], request)
+
+    def test_session_title_is_emitted_once_per_session(self):
+        probe = self.probe()
+        for request_id, text in ((2, "first prompt"), (3, "second prompt")):
+            probe.send({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "session/prompt",
+                "params": {"sessionId": "s", "prompt": [{"type": "text", "text": text}]},
+            })
+        update = probe.receive()
+        self.assertEqual(update["method"], "session/update")
+        self.assertEqual(update["params"]["update"]["title"], "first prompt")
+        self.assertEqual(probe.receive()["result"]["request"]["id"], 2)
+        self.assertEqual(probe.receive()["result"]["request"]["id"], 3)
+        probe.send({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "session/prompt",
+            "params": {"sessionId": "other", "prompt": [{"type": "resource", "resource": {}}]},
+        })
+        self.assertEqual(probe.receive()["result"]["request"]["id"], 4)
 
     def test_registry_entry_carries_the_devin_config_flag(self):
         completed = subprocess.run(
@@ -328,7 +366,15 @@ class ShimTests(unittest.TestCase):
         ]
         events.append({"jsonrpc": "2.0", "id": "extension", "error": {"code": -32601, "message": "unsupported"}})
         probe.send({"jsonrpc": "2.0", "id": 2, "method": "test/events", "params": events})
-        self.assertEqual([probe.receive() for event in events], events)
+        received = [probe.receive() for event in events]
+        for original, forwarded in zip(events, received):
+            update = original.get("params", {}).get("update", {})
+            if update.get("sessionUpdate") in ("tool_call", "tool_call_update"):
+                forwarded = json.loads(json.dumps(forwarded))
+                forwarded["params"]["update"].pop("_meta")
+            self.assertEqual(forwarded, original)
+        tool_call = received[2]["params"]["update"]
+        self.assertEqual(tool_call["_meta"]["cognition.ai/inferenceToolName"], "read")
         self.assertEqual(probe.receive(), {"jsonrpc": "2.0", "id": 2, "result": {"stopReason": "end_turn"}})
 
     def test_permission_requests_and_responses_are_bidirectional(self):
@@ -366,6 +412,103 @@ class ShimTests(unittest.TestCase):
         parameters = {"sessionId": "fixture"}
         probe.send({"jsonrpc": "2.0", "method": "session/cancel", "params": parameters})
         self.assertEqual(probe.receive(), {"jsonrpc": "2.0", "method": "test/cancelled", "params": parameters})
+
+    def test_cancel_boilerplate_is_suppressed_but_partial_output_and_response_survive(self):
+        log = Path(self.directory.name) / "cancel.jsonl"
+        probe = self.probe(extra_args=["--debug-log", str(log)])
+        probe.send({
+            "jsonrpc": "2.0",
+            "id": "turn",
+            "method": "session/prompt",
+            "params": {"sessionId": "fixture", "prompt": [], "cancelFixture": True},
+        })
+        self.assertEqual(probe.receive()["params"]["update"]["content"]["text"], "Partial response")
+        probe.send({"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": "fixture"}})
+        self.assertEqual(probe.receive()["method"], "test/cancelled")
+        self.assertEqual(probe.receive()["params"]["update"], {
+            "sessionUpdate": "usage_update", "used": 12, "size": 100,
+        })
+        self.assertEqual(probe.receive(), {"jsonrpc": "2.0", "id": "turn", "result": {"stopReason": "cancelled"}})
+        probe.send({"jsonrpc": "2.0", "id": "next", "method": "test/echo", "params": {}})
+        self.assertEqual(probe.receive()["result"]["request"]["id"], "next")
+        probe.finish()
+        records = [json.loads(line) for line in log.read_text().splitlines()]
+        self.assertTrue(any(
+            record.get("dir") == "shim"
+            and record.get("msg", {}).get("event") == "cancellation_message_suppressed"
+            for record in records
+        ))
+        self.assertIn("The request was cancelled by the client.", log.read_text())
+
+    def test_cancel_filter_is_scoped_to_an_active_prompt_and_session(self):
+        for prompt_session, cancel_session, notice_session, suppressed in (
+            ("active", "active", "active", True),
+            ("active", "other", "active", False),
+            ("active", "active", "other", False),
+            (None, "idle", "idle", False),
+        ):
+            with self.subTest(prompt=prompt_session, cancel=cancel_session, notice=notice_session):
+                bridge = self.shim.Bridge(Path(sys.executable), [], False)
+                if prompt_session is not None:
+                    bridge.from_client(self.shim.dump({
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "session/prompt",
+                        "params": {"sessionId": prompt_session, "prompt": []},
+                    }))
+                bridge.from_client(self.shim.dump({
+                    "jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": cancel_session},
+                }))
+                frame = self.shim.dump({
+                    "jsonrpc": "2.0",
+                    "method": "session/update",
+                    "params": {"sessionId": notice_session, "update": {
+                        "sessionUpdate": "agent_message_chunk",
+                        "content": {"type": "text", "text": "The request was cancelled by the client."},
+                    }},
+                })
+                self.assertEqual(bridge.from_agent(frame), None if suppressed else frame)
+
+    def test_cancel_filter_preserves_other_text_and_clears_on_any_response(self):
+        for response in (
+            {"result": {"stopReason": "cancelled", "usage": {"inputTokens": 12}}},
+            {"result": {"stopReason": "end_turn"}},
+            {"result": {"stopReason": "_provider_reason"}},
+            {"error": {"code": -32000, "message": "fixture failure"}},
+        ):
+            with self.subTest(response=response):
+                bridge = self.shim.Bridge(Path(sys.executable), [], False)
+                request = self.shim.dump({
+                    "jsonrpc": "2.0",
+                    "id": "turn",
+                    "method": "session/prompt",
+                    "params": {"sessionId": "fixture", "prompt": []},
+                })
+                bridge.from_client(request)
+                bridge.from_client(self.shim.dump({
+                    "jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": "fixture"},
+                }))
+                for text in ("More partial output", "Output: The request was cancelled by the client."):
+                    frame = self.shim.dump({
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {"sessionId": "fixture", "update": {
+                            "sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": text},
+                        }},
+                    })
+                    self.assertEqual(bridge.from_agent(frame), frame)
+                completed = self.shim.dump({"jsonrpc": "2.0", "id": "turn", **response})
+                self.assertEqual(bridge.from_agent(completed), completed)
+                bridge.from_client(request)
+                notice = self.shim.dump({
+                    "jsonrpc": "2.0",
+                    "method": "session/update",
+                    "params": {"sessionId": "fixture", "update": {
+                        "sessionUpdate": "agent_message_chunk",
+                        "content": {"type": "text", "text": "The request was cancelled by the client."},
+                    }},
+                })
+                self.assertEqual(bridge.from_agent(notice), notice)
 
     def test_large_stderr_is_drained_without_being_exposed(self):
         probe = self.probe()
@@ -467,6 +610,15 @@ class ShimTests(unittest.TestCase):
         self.assertEqual(info["title"], "Antigravity (Devin shim)")
         self.assertTrue(info["version"].endswith(f"+devin-shim-{self.shim.VERSION}"))
 
+    def test_mcp_config_path_is_advertised_only_with_devin_config(self):
+        plain = self.probe()
+        plain.send(self.initialize())
+        self.assertNotIn("mcpConfigPath", plain.receive()["result"].get("_meta") or {})
+        merged = self.probe(extra_args=["--devin-config"])
+        merged.send(self.initialize())
+        path = merged.receive()["result"]["_meta"]["mcpConfigPath"]
+        self.assertTrue(path.endswith(".config/devin/mcp_config.json"))
+
     def test_shim_command_is_advertised_and_answered_locally(self):
         probe = self.probe()
         events = [{
@@ -484,6 +636,8 @@ class ShimTests(unittest.TestCase):
         update = probe.receive()["params"]["update"]
         names = [command["name"] for command in update["availableCommands"]]
         self.assertEqual(names, ["existing", self.shim.SHIM_COMMAND])
+        injected = update["availableCommands"][-1]
+        self.assertEqual(injected["_meta"], {"cognition.ai/category": "System"})
         self.assertEqual(probe.receive(), {"jsonrpc": "2.0", "id": 2, "result": {"stopReason": "end_turn"}})
         probe.send({
             "jsonrpc": "2.0",
@@ -531,16 +685,18 @@ class ShimTests(unittest.TestCase):
         probe.send({"jsonrpc": "2.0", "id": 2, "method": "test/events", "params": events})
         created = probe.receive()["params"]["update"]
         self.assertEqual(created["_meta"]["terminal_info"], {"terminal_id": "cmd-1"})
+        self.assertEqual(created["_meta"]["cognition.ai/inferenceToolName"], "exec")
         updated = probe.receive()["params"]["update"]
+        self.assertEqual(updated["_meta"]["cognition.ai/inferenceToolName"], "exec")
         self.assertEqual(updated["_meta"]["terminal_output"], {"terminal_id": "cmd-1", "data": "hi"})
         self.assertEqual(
             updated["_meta"]["terminal_exit"],
             {"terminal_id": "cmd-1", "exit_code": 0, "signal": None},
         )
         plain_read = probe.receive()["params"]["update"]
-        self.assertNotIn("_meta", plain_read)
+        self.assertEqual(plain_read["_meta"]["cognition.ai/inferenceToolName"], "read")
         read_update = probe.receive()["params"]["update"]
-        self.assertNotIn("_meta", read_update)
+        self.assertEqual(read_update["_meta"]["cognition.ai/inferenceToolName"], "read")
         self.assertEqual(read_update["rawOutput"], "Tool execution failed")
         probe.receive()
         failed_run = probe.receive()["params"]["update"]
