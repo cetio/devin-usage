@@ -1,6 +1,6 @@
 {
-  "name": "devin-usage",
-  "displayName": "Devin Usage",
+  "name": "devin-better-acp",
+  "displayName": "Devin Better ACP",
   "description": "Shows Codex and Antigravity CLI allowance usage in the status bar.",
   "version": "0.3.3",
   "license": "MIT",
@@ -29,76 +29,76 @@
   "contributes": {
     "commands": [
       {
-        "command": "devinUsage.showUsage",
+        "command": "devinBetterACP.showUsage",
         "title": "Show Usage",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       },
       {
-        "command": "devinUsage.refreshAll",
+        "command": "devinBetterACP.refreshAll",
         "title": "Refresh All",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       },
       {
-        "command": "devinUsage.retry",
+        "command": "devinBetterACP.retry",
         "title": "Retry Connection",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       },
       {
-        "command": "devinUsage.configureCli",
+        "command": "devinBetterACP.configureCli",
         "title": "Configure CLI Path",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       },
       {
-        "command": "devinUsage.openSettings",
+        "command": "devinBetterACP.openSettings",
         "title": "Open Settings",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       },
       {
-        "command": "devinUsage.showDiagnostics",
+        "command": "devinBetterACP.showDiagnostics",
         "title": "Show Diagnostics",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       },
       {
-        "command": "devinUsage.openChatGptUsage",
+        "command": "devinBetterACP.openChatGptUsage",
         "title": "Open ChatGPT Usage Page",
-        "category": "Devin Usage"
+        "category": "Devin Better ACP"
       }
     ],
     "configuration": {
-      "title": "Devin Usage",
+      "title": "Devin Better ACP",
       "properties": {
-        "devinUsage.codex.enabled": {
+        "devinBetterACP.codex.enabled": {
           "type": "boolean",
           "default": true,
           "scope": "application",
           "description": "Show Codex subscription allowance in the status bar."
         },
-        "devinUsage.codex.path": {
+        "devinBetterACP.codex.path": {
           "type": "string",
           "default": "",
           "scope": "machine",
           "description": "Absolute path to the codex CLI. Leave empty to search PATH and ~/.local/bin."
         },
-        "devinUsage.antigravity.enabled": {
+        "devinBetterACP.antigravity.enabled": {
           "type": "boolean",
           "default": true,
           "scope": "application",
           "description": "Show Antigravity CLI allowance in the status bar."
         },
-        "devinUsage.antigravity.path": {
+        "devinBetterACP.antigravity.path": {
           "type": "string",
           "default": "",
           "scope": "machine",
           "description": "Absolute path to the agy CLI. Leave empty to search PATH and ~/.local/bin."
         },
-        "devinUsage.refreshIntervalSeconds": {
+        "devinBetterACP.refreshIntervalSeconds": {
           "type": "number",
           "default": 300,
           "minimum": 0,
           "scope": "application",
           "description": "Seconds between background refreshes. 0 refreshes at startup and on request only. Values between 1 and 59 are raised to 60."
         },
-        "devinUsage.statusBar.alignment": {
+        "devinBetterACP.statusBar.alignment": {
           "type": "string",
           "enum": [
             "left",
@@ -108,19 +108,19 @@
           "scope": "application",
           "description": "Status-bar side for the usage items."
         },
-        "devinUsage.statusBar.showCodex": {
+        "devinBetterACP.statusBar.showCodex": {
           "type": "boolean",
           "default": true,
           "scope": "application",
           "description": "Show the Codex status-bar item."
         },
-        "devinUsage.statusBar.showGemini": {
+        "devinBetterACP.statusBar.showGemini": {
           "type": "boolean",
           "default": true,
           "scope": "application",
           "description": "Show the Antigravity Gemini status-bar item."
         },
-        "devinUsage.statusBar.showOther": {
+        "devinBetterACP.statusBar.showOther": {
           "type": "boolean",
           "default": true,
           "scope": "application",
@@ -135,7 +135,7 @@
     "test": "npm run build && node --test \"dist/tests/unit/**/*.js\"",
     "test:integration": "npm run build && node .devin/runintegration.mjs",
     "package:files": "vsce ls --no-dependencies --ignoreFile .devin/packageignore",
-    "package": "npm run build && vsce package --no-dependencies --ignoreFile .devin/packageignore --out bin/devin-usage-0.3.3.vsix"
+    "package": "npm run build && vsce package --no-dependencies --ignoreFile .devin/packageignore --out bin/devin-better-acp-0.3.3.vsix"
   },
   "devDependencies": {
     "@types/node": "22.20.4",

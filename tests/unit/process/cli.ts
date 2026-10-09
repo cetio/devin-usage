@@ -37,7 +37,7 @@ function resolve(name: string, options: ResolveOptions): CliResolution
 
 test("configured CLI paths must be absolute executable files", (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "tool.cjs", "process.exit(0);\n");
     const plain = join(directory, "plain.txt");
@@ -58,7 +58,7 @@ test("configured CLI paths must be absolute executable files", (context) =>
 
 test("CLI discovery ignores relative and workspace PATH entries", (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const home = join(directory, "home");
     const bin = join(directory, "bin");
@@ -91,7 +91,7 @@ test("version parsing and comparison are exact", () =>
 
 test("a CLI run captures output and exit codes", async (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "lines.cjs", LINES_SCRIPT);
     const result = await runCli({ command: script, args: [], cwd: directory, timeoutMs: 5000 });
@@ -103,7 +103,7 @@ test("a CLI run captures output and exit codes", async (context) =>
 
 test("a CLI run reports line events and final partial lines", async (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "lines.cjs", LINES_SCRIPT);
     const lines: string[] = [];
@@ -116,7 +116,7 @@ test("a CLI run reports line events and final partial lines", async (context) =>
 
 test("a hanging CLI is terminated as a group and reaped", async (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "sleep.cjs", SLEEP_SCRIPT);
     const process = CliProcess.start({ command: script, args: [], cwd: directory, timeoutMs: 300 });
@@ -130,7 +130,7 @@ test("a hanging CLI is terminated as a group and reaped", async (context) =>
 
 test("a CLI that spawns a child has its whole group terminated", async (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const marker = join(directory, "marker.txt");
     const childCode = `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'x'), 1200)`;
@@ -150,7 +150,7 @@ setTimeout(() => process.exit(0), 30000);
 
 test("output limits stop runaway CLI output", async (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "flood.cjs", `
 process.stdout.write("x".repeat(2048));
@@ -162,13 +162,13 @@ setTimeout(() => process.exit(0), 30000);
 
 test("missing executables surface as spawn errors", async () =>
 {
-    const result = await runCli({ command: "/nonexistent/devin-usage-tool", args: [], cwd: "/tmp", timeoutMs: 1000 });
+    const result = await runCli({ command: "/nonexistent/devin-better-acp-tool", args: [], cwd: "/tmp", timeoutMs: 1000 });
     assert.equal(result.exit.spawnError, "ENOENT");
 });
 
 test("aborting a CLI run terminates it", async (context) =>
 {
-    const directory = tempDir("devin-usage-cli-");
+    const directory = tempDir("devin-better-acp-cli-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "sleep.cjs", SLEEP_SCRIPT);
     const controller = new AbortController();

@@ -189,7 +189,7 @@ test("a status click shows only that pool and keeps its scope across refreshes",
     const rows = windowRows(view);
     assert.equal(rows.length, 2);
     assert.ok(rows.every((item) => item.id.startsWith("window.antigravity.gemini.")));
-    assert.equal(view.title, "Devin Usage · Antigravity · Gemini");
+    assert.equal(view.title, "Devin Better ACP · Antigravity · Gemini");
     view.value = "weekly";
     view.activeItems = [rows[1]!];
     picker.update(statuses(), { ...context, now: 2000 });
@@ -262,7 +262,7 @@ test("settings and connection actions live in a separate menu with back navigati
     assert.ok(view.items.some((item) => item.action?.kind === "configureCli"));
     assert.equal(view.items.some((item) => item.action?.kind === "openChatGptUsage"), false);
     view.press(BACK);
-    assert.equal(view.title, "Devin Usage · Antigravity · Gemini");
+    assert.equal(view.title, "Devin Better ACP · Antigravity · Gemini");
     picker.dispose();
 });
 
@@ -272,7 +272,7 @@ test("back from a focused pool shows the all-provider overview", () =>
     picker.show(statuses(), { now: 1000, staleAfterMs: 600000 }, { provider: "codex", poolId: "codex" });
     const view = current();
     view.press(BACK);
-    assert.equal(view.title, "Devin Usage");
+    assert.equal(view.title, "Devin Better ACP");
     assert.equal(windowRows(view).length, 6);
     picker.dispose();
 });

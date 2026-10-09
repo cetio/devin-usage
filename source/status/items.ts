@@ -4,9 +4,9 @@ import { DISPLAY_POOLS, PoolId, ProviderStatus } from "../allowance/model";
 import { DisplayContext, statusDisplay } from "./display";
 
 const STATUS_ITEM_IDS: Record<PoolId, string> = {
-    codex: "devinUsage.codex",
-    gemini: "devinUsage.gemini",
-    other: "devinUsage.other",
+    codex: "devinBetterACP.codex",
+    gemini: "devinBetterACP.gemini",
+    other: "devinBetterACP.other",
 };
 
 const STATUS_ITEM_PRIORITIES: Record<PoolId, number> = {
@@ -87,7 +87,7 @@ export class StatusBarView
             item.name = `${displayPool.label} Usage`;
             item.command = {
                 title: "Show Usage",
-                command: "devinUsage.showUsage",
+                command: "devinBetterACP.showUsage",
                 arguments: [{ provider: displayPool.provider, poolId: displayPool.poolId }],
             };
             this.items.set(displayPool.id, item);

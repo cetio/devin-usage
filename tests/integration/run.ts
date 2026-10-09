@@ -6,19 +6,19 @@ import { ConnectionState } from "../../source/allowance/model";
 import type { ExtensionApi } from "../../source/extension";
 
 const COMMANDS = [
-    "devinUsage.showUsage",
-    "devinUsage.refreshAll",
-    "devinUsage.retry",
-    "devinUsage.configureCli",
-    "devinUsage.openSettings",
-    "devinUsage.showDiagnostics",
-    "devinUsage.openChatGptUsage",
+    "devinBetterACP.showUsage",
+    "devinBetterACP.refreshAll",
+    "devinBetterACP.retry",
+    "devinBetterACP.configureCli",
+    "devinBetterACP.openSettings",
+    "devinBetterACP.showDiagnostics",
+    "devinBetterACP.openChatGptUsage",
 ];
 
 export async function run(): Promise<void>
 {
-    const extension = vscode.extensions.getExtension("cet.devin-usage");
-    assert.ok(extension !== undefined, "the Devin Usage extension is installed");
+    const extension = vscode.extensions.getExtension("cet.devin-better-acp");
+    assert.ok(extension !== undefined, "the Devin Better ACP extension is installed");
     const api = await extension.activate() as ExtensionApi;
     assert.ok(api !== undefined, "the extension exposes its status API");
 
@@ -26,7 +26,7 @@ export async function run(): Promise<void>
     for (const command of COMMANDS)
         assert.ok(commands.includes(command), `${command} is registered`);
 
-    await vscode.commands.executeCommand("devinUsage.refreshAll");
+    await vscode.commands.executeCommand("devinBetterACP.refreshAll");
     await waitFor(() => api.statuses().every((status) => status.state === ConnectionState.Ready), 30000);
 
     const statuses = api.statuses();
@@ -40,7 +40,7 @@ export async function run(): Promise<void>
     assert.equal(antigravity.cliVersion, "1.2.16");
     assert.ok((codex.snapshot?.pools[0]?.windows.length ?? 0) >= 2);
 
-    const resultFile = process.env.DEVIN_USAGE_RESULT_FILE;
+    const resultFile = process.env.DEVIN_BETTER_ACP_RESULT_FILE;
     if (resultFile !== undefined)
         writeFileSync(resultFile, `${JSON.stringify({ ok: true, statuses: statuses.length })}\n`);
 }

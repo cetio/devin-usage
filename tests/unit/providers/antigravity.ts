@@ -102,7 +102,7 @@ test("antigravity keeps unknown groups and skips unusable buckets", () =>
 
 test("the antigravity adapter reads a successful report end to end", async (context) =>
 {
-    const directory = tempDir("devin-usage-agy-");
+    const directory = tempDir("devin-better-acp-agy-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "agy.cjs", agyScript({}));
     const adapter = createAntigravityAdapter(invocation(script, directory));
@@ -114,7 +114,7 @@ test("the antigravity adapter reads a successful report end to end", async (cont
 
 test("the antigravity adapter classifies process failures", async (context) =>
 {
-    const directory = tempDir("devin-usage-agy-");
+    const directory = tempDir("devin-better-acp-agy-");
     context.after(() => removeDirectory(directory));
     const signedOutReport = agyScript({ exitCode: 1, stderr: "authentication required\n" });
     const signedOut = writeScript(directory, "signed-out.cjs", signedOutReport);

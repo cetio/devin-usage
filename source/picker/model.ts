@@ -49,9 +49,9 @@ type PickSpec = {
 export function pickerTitle(statuses: ProviderStatus[], focus?: PickerFocus): string
 {
     if (focus === undefined)
-        return "Devin Usage";
+        return "Devin Better ACP";
     const status = statuses.find((candidate) => candidate.provider === focus.provider);
-    return `Devin Usage · ${poolHeading(focus.provider, focus.poolId, status?.snapshot?.pools)}`;
+    return `Devin Better ACP · ${poolHeading(focus.provider, focus.poolId, status?.snapshot?.pools)}`;
 }
 
 export function pickerItems(

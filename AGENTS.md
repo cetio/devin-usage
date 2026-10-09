@@ -20,7 +20,7 @@ VSIX for host verification instead.
 Manual host check:
 
 ```sh
-devin-desktop --user-data-dir=/tmp/devin-usage-dev --extensions-dir=/tmp/devin-usage-ext \
+devin-desktop --user-data-dir=/tmp/devin-better-acp-dev --extensions-dir=/tmp/devin-better-acp-ext \
   --extensionDevelopmentPath="$PWD"
 ```
 

@@ -97,7 +97,7 @@ test("codex keeps zero and over-limit usage values", () =>
 
 test("the codex adapter sends only the allowlisted read-only requests", async (context) =>
 {
-    const directory = tempDir("devin-usage-codex-");
+    const directory = tempDir("devin-better-acp-codex-");
     context.after(() => removeDirectory(directory));
     const logPath = join(directory, "requests.log");
     const script = writeScript(directory, "codex.cjs", codexServerScript({
@@ -122,7 +122,7 @@ test("the codex adapter sends only the allowlisted read-only requests", async (c
 
 test("the codex adapter reports missing or non-ChatGPT logins truthfully", async (context) =>
 {
-    const directory = tempDir("devin-usage-codex-");
+    const directory = tempDir("devin-better-acp-codex-");
     context.after(() => removeDirectory(directory));
     const signedOut = writeScript(directory, "signed-out.cjs", codexServerScript({
         account: { account: null, requiresOpenaiAuth: true },
@@ -147,7 +147,7 @@ test("the codex adapter reports missing or non-ChatGPT logins truthfully", async
 
 test("the codex adapter classifies app-server errors", async (context) =>
 {
-    const directory = tempDir("devin-usage-codex-");
+    const directory = tempDir("devin-better-acp-codex-");
     context.after(() => removeDirectory(directory));
     const unsupported = writeScript(directory, "unsupported.cjs", codexServerScript({
         account: { account: { type: "chatgpt" } },
@@ -172,7 +172,7 @@ test("the codex adapter classifies app-server errors", async (context) =>
 
 test("a silent codex app-server fails as unavailable", async (context) =>
 {
-    const directory = tempDir("devin-usage-codex-");
+    const directory = tempDir("devin-better-acp-codex-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "silent.cjs", codexServerScript({
         account: { account: { type: "chatgpt" } },
@@ -187,7 +187,7 @@ test("a silent codex app-server fails as unavailable", async (context) =>
 
 test("the codex adapter reports its version", async (context) =>
 {
-    const directory = tempDir("devin-usage-codex-");
+    const directory = tempDir("devin-better-acp-codex-");
     context.after(() => removeDirectory(directory));
     const script = writeScript(directory, "codex.cjs", codexServerScript({
         account: { account: { type: "chatgpt" } },

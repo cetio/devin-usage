@@ -15,7 +15,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 const CHATGPT_USAGE_URL = "https://chatgpt.com/settings/usage?tab=overview";
-const SETTINGS_QUERY = "@ext:cet.devin-usage";
+const SETTINGS_QUERY = "@ext:cet.devin-better-acp";
 const TIME_TICK_MS = 60000;
 const VERSION_TIMEOUT_MS = 10000;
 const UNTRUSTED_MESSAGE = "Trust this workspace to enable usage monitoring.";
@@ -136,7 +136,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi
         vscode.window.onDidChangeWindowState((state) => controller.setFocused(state.focused)),
         vscode.workspace.onDidChangeConfiguration((event) =>
         {
-            if (!event.affectsConfiguration("devinUsage"))
+            if (!event.affectsConfiguration("devinBetterACP"))
                 return;
             settings = readSettings();
             view.setAlignment(settings.alignment);
@@ -145,16 +145,16 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi
             controller.configure(buildSetups());
             render();
         }),
-        vscode.commands.registerCommand("devinUsage.showUsage", (focus?: unknown) =>
+        vscode.commands.registerCommand("devinBetterACP.showUsage", (focus?: unknown) =>
         {
             picker.show(controller.getStatuses(), displayContext(), parseFocus(focus));
         }),
-        vscode.commands.registerCommand("devinUsage.refreshAll", async () =>
+        vscode.commands.registerCommand("devinBetterACP.refreshAll", async () =>
         {
             await controller.refreshAll({ manual: true });
             render();
         }),
-        vscode.commands.registerCommand("devinUsage.retry", async (provider?: unknown) =>
+        vscode.commands.registerCommand("devinBetterACP.retry", async (provider?: unknown) =>
         {
             const target = await resolveProvider(provider);
             if (target === undefined)
@@ -162,21 +162,21 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi
             await controller.refresh(target, { manual: true });
             render();
         }),
-        vscode.commands.registerCommand("devinUsage.configureCli", async (provider?: unknown) =>
+        vscode.commands.registerCommand("devinBetterACP.configureCli", async (provider?: unknown) =>
         {
             const target = await resolveProvider(provider);
             if (target !== undefined)
                 await configureCli(target);
         }),
-        vscode.commands.registerCommand("devinUsage.openSettings", () =>
+        vscode.commands.registerCommand("devinBetterACP.openSettings", () =>
         {
             void vscode.commands.executeCommand("workbench.action.openSettings", SETTINGS_QUERY);
         }),
-        vscode.commands.registerCommand("devinUsage.showDiagnostics", () =>
+        vscode.commands.registerCommand("devinBetterACP.showDiagnostics", () =>
         {
             diagnostics.show(controller.getStatuses(), displayContext());
         }),
-        vscode.commands.registerCommand("devinUsage.openChatGptUsage", () =>
+        vscode.commands.registerCommand("devinBetterACP.openChatGptUsage", () =>
         {
             void vscode.env.openExternal(vscode.Uri.parse(CHATGPT_USAGE_URL));
         }),
@@ -200,7 +200,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi
 
 function readSettings(): UsageSettings
 {
-    const configuration = vscode.workspace.getConfiguration("devinUsage");
+    const configuration = vscode.workspace.getConfiguration("devinBetterACP");
     return normalizeSettings({
         codexEnabled: configuration.get("codex.enabled"),
         codexPath: configuration.get("codex.path"),
@@ -229,7 +229,7 @@ async function resolveProvider(value: unknown): Promise<ProviderId | undefined>
             { label: "Codex", provider: "codex" as ProviderId },
             { label: "Antigravity", provider: "antigravity" as ProviderId },
         ],
-        { title: "Devin Usage", placeHolder: "Select a provider" },
+        { title: "Devin Better ACP", placeHolder: "Select a provider" },
     );
     return picked?.provider;
 }
@@ -251,7 +251,7 @@ async function configureCli(provider: ProviderId): Promise<void>
         return;
     if (!isExecutableFile(path))
     {
-        void vscode.window.showWarningMessage(`Devin Usage: ${path} is not an executable file.`);
+        void vscode.window.showWarningMessage(`Devin Better ACP: ${path} is not an executable file.`);
         return;
     }
     await updateSetting(`${provider}.path`, path);
@@ -259,7 +259,7 @@ async function configureCli(provider: ProviderId): Promise<void>
 
 async function updateSetting(key: string, value: unknown): Promise<void>
 {
-    await vscode.workspace.getConfiguration("devinUsage").update(key, value, vscode.ConfigurationTarget.Global);
+    await vscode.workspace.getConfiguration("devinBetterACP").update(key, value, vscode.ConfigurationTarget.Global);
 }
 
 function parseFocus(value: unknown): { provider: ProviderId; poolId: string } | undefined

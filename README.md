@@ -1,8 +1,8 @@
-# Devin Usage
+# Devin Better ACP
 
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE.txt)
 
-Devin Usage is a Devin Desktop status-bar extension that shows Codex
+Devin Better ACP is a Devin Desktop status-bar extension that shows Codex
 subscription allowance and Antigravity CLI allowance. It reads both through the
 CLIs you are already signed in to.
 
@@ -29,7 +29,7 @@ Build the VSIX and install it:
 ```sh
 npm ci
 npm run package
-devin-desktop --install-extension bin/devin-usage-0.3.3.vsix
+devin-desktop --install-extension bin/devin-better-acp-0.3.3.vsix
 ```
 
 Reload the window after installing.
@@ -49,23 +49,23 @@ pools, so Other (AG) does not describe the standalone Codex subscription. Codex
 shows its plan and credit metadata under Details. Missing usage values stay
 missing and stale results are labelled rather than shown as zero.
 
-The items use stable identifiers (`devinUsage.codex`, `devinUsage.gemini`,
-`devinUsage.other`), so the host's own hide and show menu and the visibility
+The items use stable identifiers (`devinBetterACP.codex`, `devinBetterACP.gemini`,
+`devinBetterACP.other`), so the host's own hide and show menu and the visibility
 settings both work.
 
 ## Settings
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `devinUsage.codex.enabled` | `true` | Enable the Codex provider |
-| `devinUsage.codex.path` | empty | Absolute path to `codex` |
-| `devinUsage.antigravity.enabled` | `true` | Enable the Antigravity provider |
-| `devinUsage.antigravity.path` | empty | Absolute path to `agy` |
-| `devinUsage.refreshIntervalSeconds` | `300` | Background refresh interval. `0` refreshes at startup and on request only. |
-| `devinUsage.statusBar.alignment` | `right` | Status-bar side |
-| `devinUsage.statusBar.showCodex` | `true` | Show the Codex item |
-| `devinUsage.statusBar.showGemini` | `true` | Show the Gemini (AG) item |
-| `devinUsage.statusBar.showOther` | `true` | Show the Other (AG) item |
+| `devinBetterACP.codex.enabled` | `true` | Enable the Codex provider |
+| `devinBetterACP.codex.path` | empty | Absolute path to `codex` |
+| `devinBetterACP.antigravity.enabled` | `true` | Enable the Antigravity provider |
+| `devinBetterACP.antigravity.path` | empty | Absolute path to `agy` |
+| `devinBetterACP.refreshIntervalSeconds` | `300` | Background refresh interval. `0` refreshes at startup and on request only. |
+| `devinBetterACP.statusBar.alignment` | `right` | Status-bar side |
+| `devinBetterACP.statusBar.showCodex` | `true` | Show the Codex item |
+| `devinBetterACP.statusBar.showGemini` | `true` | Show the Gemini (AG) item |
+| `devinBetterACP.statusBar.showOther` | `true` | Show the Other (AG) item |
 
 Refreshes pause while the window is unfocused and back off after transient
 failures. Polling stops after a sign-in, missing-CLI, or unsupported result
@@ -75,13 +75,13 @@ until you retry. Monitoring is paused in untrusted workspaces.
 
 | Command | Purpose |
 | --- | --- |
-| `Devin Usage: Show Usage` | Open the details and actions menu |
-| `Devin Usage: Refresh All` | Refresh both providers now |
-| `Devin Usage: Retry Connection` | Retry a provider, including the CLI version check |
-| `Devin Usage: Configure CLI Path` | Pick the CLI executable and store its absolute path |
-| `Devin Usage: Open Settings` | Open the extension settings |
-| `Devin Usage: Show Diagnostics` | Show classified provider state and recent refresh events |
-| `Devin Usage: Open ChatGPT Usage Page` | Open the account usage page for Codex |
+| `Devin Better ACP: Show Usage` | Open the details and actions menu |
+| `Devin Better ACP: Refresh All` | Refresh both providers now |
+| `Devin Better ACP: Retry Connection` | Retry a provider, including the CLI version check |
+| `Devin Better ACP: Configure CLI Path` | Pick the CLI executable and store its absolute path |
+| `Devin Better ACP: Open Settings` | Open the extension settings |
+| `Devin Better ACP: Show Diagnostics` | Show classified provider state and recent refresh events |
+| `Devin Better ACP: Open ChatGPT Usage Page` | Open the account usage page for Codex |
 
 ## How It Works
 
@@ -113,7 +113,7 @@ the renderer. Devin Desktop 1.126 does not, so use the Extension Development
 Host or an installed VSIX for manual verification:
 
 ```sh
-devin-desktop --user-data-dir=/tmp/devin-usage-dev --extensions-dir=/tmp/devin-usage-ext \
+devin-desktop --user-data-dir=/tmp/devin-better-acp-dev --extensions-dir=/tmp/devin-better-acp-ext \
   --extensionDevelopmentPath="$PWD"
 ```
 
@@ -133,4 +133,4 @@ default `~/.local/opt/agy-acp/current/agy_acp_server.par`.
 
 ## License
 
-Devin Usage is licensed under [MIT](LICENSE.txt).
+Devin Better ACP is licensed under [MIT](LICENSE.txt).

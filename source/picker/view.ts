@@ -153,7 +153,7 @@ export class UsagePicker
         }
         catch
         {
-            void vscode.window.showErrorMessage("Devin Usage: refresh failed. See diagnostics for connection details.");
+            void vscode.window.showErrorMessage("Devin Better ACP: refresh failed. See diagnostics for connection details.");
         }
         finally
         {

@@ -83,10 +83,10 @@ test("Codex and Gemini use the same labels, order, values and reset layout", () 
             "Allowance", "Details", "Actions",
         ]);
     assert.equal(gemini.some((item) => item.id === "metadata.codex.Plan"), false);
-    assert.equal(pickerTitle(statuses), "Devin Usage");
-    assert.equal(pickerTitle(statuses, { provider: "codex", poolId: "codex" }), "Devin Usage · Codex");
+    assert.equal(pickerTitle(statuses), "Devin Better ACP");
+    assert.equal(pickerTitle(statuses, { provider: "codex", poolId: "codex" }), "Devin Better ACP · Codex");
     const title = pickerTitle(statuses, { provider: "antigravity", poolId: "gemini" });
-    assert.equal(title, "Devin Usage · Antigravity · Gemini");
+    assert.equal(title, "Devin Better ACP · Antigravity · Gemini");
 });
 
 test("the overview groups pools without duplicating provider headings", () =>

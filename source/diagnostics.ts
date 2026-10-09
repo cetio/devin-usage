@@ -9,7 +9,7 @@ const MAX_EVENTS = 50;
 
 export class Diagnostics
 {
-    private readonly channel = vscode.window.createOutputChannel("Devin Usage");
+    private readonly channel = vscode.window.createOutputChannel("Devin Better ACP");
     private readonly events: string[] = [];
 
     note(info: RefreshInfo): void
@@ -27,7 +27,7 @@ export class Diagnostics
     show(statuses: ProviderStatus[], context: DisplayContext): void
     {
         this.channel.clear();
-        this.channel.appendLine(`Devin Usage diagnostics \u2014 ${formatTimestamp(context.now)}`);
+        this.channel.appendLine(`Devin Better ACP diagnostics \u2014 ${formatTimestamp(context.now)}`);
         for (const status of statuses)
         {
             this.channel.appendLine("");

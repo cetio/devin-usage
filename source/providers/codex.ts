@@ -11,8 +11,8 @@ import {
 } from "./adapter";
 import { asNumber, asRecord, asString } from "./envelope";
 
-const CLIENT_NAME = "devin_usage";
-const CLIENT_TITLE = "Devin Usage";
+const CLIENT_NAME = "devinBetterACP";
+const CLIENT_TITLE = "Devin Better ACP";
 const MAX_STDOUT_BYTES = 1024 * 1024;
 
 export function createCodexAdapter(invocation: ProviderInvocation, clientVersion: string): ProviderAdapter
