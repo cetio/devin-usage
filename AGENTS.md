@@ -43,6 +43,43 @@ devin-desktop --user-data-dir=/tmp/devin-better-acp-dev --extensions-dir=/tmp/de
 - Diagnostics stay redacted: provider name, CLI version, classified state,
   timings, and successful-refresh age only.
 
+## ACP shim
+
+`bin/antigravity-acp.py` is a standalone Python 3.10+ ACP bridge, separate from
+read-only usage monitoring. It forwards sessions, MCP definitions, tools,
+permissions, and client capabilities without rebuilding the conversation.
+`--spoof-zed` changes only the downstream `initialize.clientInfo.name`;
+`--registry-entry` prints a Desktop agent entry. Server arguments follow `--`.
+
+The shim marks its presence in-band: the `initialize` response `agentInfo`
+gains `title: "Antigravity (Devin shim)"` and a `+devin-shim` version suffix,
+a `/devin-shim` command is merged into `available_commands_update` and answered
+locally (no model call) with bridge status, and `--debug`/`--debug-log` writes
+a JSONL traffic log to `~/.local/state/devin-better-acp/antigravity-acp.jsonl`.
+`--devin-config` merges MCP servers from `<workspace>/.devin/mcp_config*.json`,
+`<workspace>/.devin/config.json`, and `~/.config/devin/` (JSONC tolerated) into
+`session/new` and `session/load`, so Antigravity sees the same tools as Devin
+Local; client-supplied `mcpServers` always win on name conflicts.
+
+The registry `icon` must be an `http(s)` URL — Devin Desktop ignores `data:`
+URIs and requires `Content-Type: image/svg+xml`. `images/antigravity-acp.svg`
+is the white-fill mark served via jsDelivr from `main`; update `--icon-url` if
+the repository URL changes.
+
+`npm run test:acp` runs offline Python protocol tests and is included in
+`npm test`. Live Gemini checks must be explicitly authorized and use an
+isolated workspace; they are not part of automated verification. The shim
+never reads credentials or provider configuration and never patches the
+provider executable. Provider stderr is drained but not exposed.
+
+An authorized live check uses `python3 tests/integration/acp.py --run-live`
+(or adds `--registry <Desktop registry path>` to test the installed launch
+entry). It selects an advertised Gemini model and verifies file edits,
+command execution, MCP invocation, and permission round-trips in a temporary
+workspace. `--run-live` is mandatory; the test never authenticates or changes
+provider settings. Antigravity ACP 1.3.0 was verified with
+`gemini-3.6-flash-low` and standard ACP v1 tool events.
+
 ## Style
 
 TypeScript follows the conventions used in `~/Repos/autonom`: four-space
