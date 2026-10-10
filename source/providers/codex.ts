@@ -103,9 +103,10 @@ async function readUsage(
     {
         await request("initialize", { clientInfo: { name: CLIENT_NAME, title: CLIENT_TITLE, version: clientVersion } });
         process.write(`${JSON.stringify({ method: "initialized", params: {} })}\n`);
-        const account = await request("account/read", { refreshToken: false });
+        const accountPromise = request("account/read", { refreshToken: false });
+        const limitsPromise = request("account/rateLimits/read");
+        const [account, limits] = await Promise.all([accountPromise, limitsPromise]);
         assertChatGptAccount(account);
-        const limits = await request("account/rateLimits/read");
         return parseRateLimits(limits, Date.now());
     }
     finally
