@@ -13,15 +13,16 @@ from pathlib import Path
 from typing import BinaryIO
 
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 DEFAULT_SERVER = Path.home() / ".local/opt/agy-acp/current/agy_acp_server.par"
 DEFAULT_DEBUG_LOG = Path.home() / ".local/state/devin-better-acp/antigravity-acp.jsonl"
 DEFAULT_ICON_URL = "https://cdn.jsdelivr.net/gh/cetio/devin-better-acp@main/images/antigravity-acp.svg"
 MAX_FRAME_BYTES = 16 * 1024 * 1024
 KILL_GRACE_SECONDS = 2
 LOG_LINE_BYTES = 256 * 1024
+MAX_READ_PROGRESS = 128
 SHIM_COMMAND = "devin-shim"
-AGENT_TITLE = "Antigravity (Devin shim)"
+AGENT_TITLE = "Antigravity (DBA)"
 
 
 class ProtocolError(ValueError):
@@ -175,6 +176,43 @@ INFERENCE_NAMES = {
     "execute": "exec",
     "search": "grep",
 }
+MODE_PRESENTATION = {
+    "default": ("Default", "shield", "Default permission prompt flow"),
+    "auto_edit": ("Code", "code", "Auto-approve Antigravity file edits; keep command approvals."),
+    "yolo": ("Bypass Permissions", "shield-off", "Auto-approve Antigravity tool calls."),
+}
+
+
+def decorate_modes(payload: dict) -> bool:
+    groups = []
+    modes = payload.get("modes")
+    if isinstance(modes, dict) and isinstance(modes.get("availableModes"), list):
+        groups.append(modes["availableModes"])
+    options = payload.get("configOptions")
+    if isinstance(options, list):
+        groups.extend(
+            option["options"] for option in options
+            if isinstance(option, dict) and (option.get("id") == "mode" or option.get("category") == "mode")
+            and isinstance(option.get("options"), list)
+        )
+    ret = False
+    for group in groups:
+        for option in group:
+            if not isinstance(option, dict):
+                continue
+            value = option.get("value", option.get("id"))
+            presentation = MODE_PRESENTATION.get(value) if isinstance(value, str) else None
+            if presentation is None:
+                continue
+            name, icon, description = presentation
+            if option.get("name") != name or option.get("description") != description:
+                option.update(name=name, description=description)
+                ret = True
+            meta = option.setdefault("_meta", {})
+            if isinstance(meta, dict) and "cognition.ai/icon" not in meta:
+                meta["cognition.ai/icon"] = icon
+                ret = True
+    return ret
 
 
 def terminal_meta(update: dict, tool_kinds: dict) -> dict | None:
@@ -215,17 +253,64 @@ def shlex_join(arguments: list[str]) -> str:
     return ret or "(none)"
 
 
+def sensitive_log_field(name: object) -> bool:
+    if not isinstance(name, str):
+        return False
+    normalized = "".join(character for character in name.casefold() if character.isalnum())
+    return normalized in ("authorization", "headers", "header", "cookie", "setcookie", "env", "environment") or any(
+        marker in normalized for marker in ("password", "passwd", "secret", "credential", "privatekey")
+    ) or normalized.endswith(("token", "apikey", "accesskey"))
+
+
+def redact_log_value(value: object) -> object:
+    if isinstance(value, dict):
+        credential_pair = any(
+            isinstance(name, str) and name.casefold() in ("name", "key") and sensitive_log_field(text)
+            for name, text in value.items()
+        )
+        return {
+            name: "<redacted>" if sensitive_log_field(name)
+            or credential_pair and isinstance(name, str) and name.casefold() in ("value", "defaultvalue")
+            else redact_log_value(text)
+            for name, text in value.items()
+        }
+    if isinstance(value, list):
+        return [redact_log_value(item) for item in value]
+    return value
+
+
 class DebugLog:
     def __init__(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path = path
-        self.file = path.open("a", encoding="utf-8", buffering=1)
+        flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags, 0o600)
+        try:
+            if hasattr(os, "fchmod"):
+                os.fchmod(descriptor, 0o600)
+            self.file = os.fdopen(descriptor, "a", encoding="utf-8", buffering=1)
+        except BaseException:
+            os.close(descriptor)
+            raise
         self.lock = threading.Lock()
 
     def write(self, record: dict) -> None:
-        line = json.dumps({"t": round(time.time(), 3), **record}, ensure_ascii=False, default=str)
+        safe_record = redact_log_value(record)
+        line = json.dumps({"t": round(time.time(), 3), **safe_record}, ensure_ascii=True, default=str)
+        if len(line.encode("ascii")) > LOG_LINE_BYTES:
+            message = safe_record.get("msg") if isinstance(safe_record, dict) else None
+            parameters = message.get("params") if isinstance(message, dict) else None
+            update = parameters.get("update", {}) if isinstance(parameters, dict) else {}
+            request_id = message.get("id") if isinstance(message, dict) else None
+            line = json.dumps({"t": round(time.time(), 3), "dir": "log", "msg": {
+                "event": "frame_truncated",
+                "direction": safe_record.get("dir") if isinstance(safe_record, dict) else None,
+                "method": message.get("method") if isinstance(message, dict) else None,
+                "id": str(request_id)[:80] if request_id is not None else None,
+                "sessionUpdate": update.get("sessionUpdate") if isinstance(update, dict) else None,
+            }}, separators=(",", ":"))
         with self.lock:
-            self.file.write(line[:LOG_LINE_BYTES] + "\n")
+            self.file.write(line + "\n")
 
 
 def signal_child(process: subprocess.Popen, force: bool) -> None:
@@ -275,6 +360,8 @@ class Bridge:
         self.pending: dict[int | str, str] = {}
         self.prompt_sessions: dict[int | str, str] = {}
         self.cancelled_prompts: set[int | str] = set()
+        self.read_requests: dict[int | str, tuple[str, str]] = {}
+        self.read_calls: dict[tuple[str, str], dict] = {}
         self.tool_kinds: dict[str, str] = {}
         self.titled_sessions: set[str] = set()
         self.frames_up = 0
@@ -314,7 +401,7 @@ class Bridge:
             f"pid {process.pid} (running)" if process.poll() is None else f"pid {process.pid} (exited)"
         )
         lines = [
-            "**Devin ACP shim is active** — this reply came from the bridge, not the model.\n\n",
+            "**Antigravity (DBA) shim is active** — this reply came from the bridge, not the model.\n\n",
             f"- shim: devin-antigravity-acp {VERSION}\n",
             f"- upstream: `{self.server}` ({pid})\n",
             f"- upstream args: `{shlex_join(self.server_args)}`\n",
@@ -395,17 +482,122 @@ class Bridge:
             },
         }))
 
+    def track_read_progress(self, message: dict) -> None:
+        method = message.get("method")
+        parameters = message.get("params")
+        update = parameters.get("update") if isinstance(parameters, dict) else None
+        with self.lock:
+            if method == "fs/read_text_file" and isinstance(parameters, dict):
+                session_id, path = parameters.get("sessionId"), parameters.get("path")
+                request_id = message.get("id")
+                if not isinstance(session_id, str) or not isinstance(path, str) or request_id is None:
+                    return
+                key = (session_id, path)
+                if key not in self.read_calls and len(self.read_calls) >= MAX_READ_PROGRESS:
+                    return
+                progress = self.read_calls.setdefault(key, {"requests": set(), "tools": {}})
+                progress["requests"].add(request_id)
+                self.read_requests[request_id] = key
+            elif method == "session/update" and isinstance(update, dict):
+                session_id = parameters.get("sessionId")
+                tool_call_id = update.get("toolCallId")
+                if update.get("status") in ("completed", "failed"):
+                    for key in list(self.read_calls):
+                        progress = self.read_calls[key]
+                        if key[0] == session_id and tool_call_id in progress["tools"]:
+                            for request_id in progress["requests"]:
+                                self.read_requests.pop(request_id, None)
+                            self.read_calls.pop(key)
+                    return
+                if update.get("sessionUpdate") != "tool_call" or update.get("kind") != "read":
+                    return
+                if "client_view_file" not in str(update.get("title", "")):
+                    return
+                locations = update.get("locations")
+                metadata = update.get("_meta")
+                if not isinstance(locations, list) or metadata is not None and not isinstance(metadata, dict):
+                    return
+                paths = {
+                    location["path"] for location in locations
+                    if isinstance(location, dict) and isinstance(location.get("path"), str)
+                }
+                if not isinstance(session_id, str) or not isinstance(tool_call_id, str) or len(paths) != 1:
+                    return
+                key = (session_id, paths.pop())
+                if key not in self.read_calls and len(self.read_calls) >= MAX_READ_PROGRESS:
+                    return
+                progress = self.read_calls.setdefault(key, {"requests": set(), "tools": {}})
+                progress["tools"][tool_call_id] = dict(update.get("_meta") or {})
+            elif method is None:
+                key = self.read_requests.get(message.get("id"))
+                if key is None:
+                    return
+                progress = self.read_calls[key]
+                result = message.get("result")
+                text = result.get("content") if isinstance(result, dict) else None
+                if not isinstance(text, str):
+                    for request_id in progress["requests"]:
+                        self.read_requests.pop(request_id, None)
+                    self.read_calls.pop(key)
+                    return
+                progress["lines"] = text.count("\n") + int(bool(text) and not text.endswith("\n"))
+            else:
+                return
+            if len(progress["requests"]) != 1 or len(progress["tools"]) != 1 or "lines" not in progress:
+                return
+            tool_call_id, meta = next(iter(progress["tools"].items()))
+            lines = progress["lines"]
+            self.read_calls.pop(key)
+            for request_id in progress["requests"]:
+                self.read_requests.pop(request_id, None)
+            self.log("shim", {
+                "event": "host_read_completed",
+                "sessionId": key[0],
+                "toolCallId": tool_call_id,
+                "lines": lines,
+            })
+            self.send_client(dump({
+                "jsonrpc": "2.0",
+                "method": "session/update",
+                "params": {
+                    "sessionId": key[0],
+                    "update": {
+                        "sessionUpdate": "tool_call_update",
+                        "toolCallId": tool_call_id,
+                        "status": "completed",
+                        "content": [{"type": "content", "content": {"type": "text", "text": f"{lines} lines"}}],
+                        "_meta": {**meta, "devin-better-acp/hostReadCompleted": True},
+                    },
+                },
+            }))
+
     def from_client(self, frame: bytes) -> bytes | None:
         message = decode_frame(frame)
         self.frames_up += 1
         self.log("c2a", message)
+        if "method" not in message:
+            self.track_read_progress(message)
         if message.get("method") == "session/prompt":
             if self.run_shim_command(message):
                 return None
             self.emit_session_title(message)
-        if "method" in message and message.get("id") is not None:
-            self.pending[message["id"]] = message["method"]
         parameters = message.get("params")
+        if "method" in message and message.get("id") is not None:
+            with self.lock:
+                self.pending[message["id"]] = message["method"]
+                if message["method"] == "session/prompt" and isinstance(parameters, dict):
+                    session_id = parameters.get("sessionId")
+                    if isinstance(session_id, str):
+                        self.prompt_sessions[message["id"]] = session_id
+        if message.get("method") == "session/cancel" and isinstance(parameters, dict):
+            session_id = parameters.get("sessionId")
+            with self.lock:
+                cancelled = [
+                    request_id for request_id, active_session in self.prompt_sessions.items()
+                    if active_session == session_id
+                ]
+                self.cancelled_prompts.update(cancelled)
+            self.log("shim", {"event": "cancel_requested", "sessionId": session_id, "promptIds": cancelled})
         if self.spoof_zed and message.get("method") == "initialize" and isinstance(parameters, dict):
             info = dict(parameters.get("clientInfo") or {})
             info["name"] = "zed"
@@ -420,13 +612,37 @@ class Bridge:
                     return dump(message)
         return frame
 
-    def from_agent(self, frame: bytes) -> bytes:
+    def from_agent(self, frame: bytes) -> bytes | None:
         message = decode_frame(frame)
         self.frames_down += 1
         self.log("a2c", message)
         if "method" not in message:
-            if self.pending.pop(message.get("id"), None) == "initialize":
+            request_id = message.get("id")
+            with self.lock:
+                method = self.pending.pop(request_id, None)
+                session_id = self.prompt_sessions.pop(request_id, None)
+                cancelled = request_id in self.cancelled_prompts
+                self.cancelled_prompts.discard(request_id)
+                if method == "session/prompt" and session_id not in self.prompt_sessions.values():
+                    for key in list(self.read_calls):
+                        if key[0] == session_id:
+                            for read_id in self.read_calls.pop(key)["requests"]:
+                                self.read_requests.pop(read_id, None)
+            if cancelled:
                 result = message.get("result")
+                error = message.get("error")
+                self.log("shim", {
+                    "event": "cancel_completed",
+                    "sessionId": session_id,
+                    "promptId": request_id,
+                    "stopReason": result.get("stopReason") if isinstance(result, dict) else None,
+                    "errorCode": error.get("code") if isinstance(error, dict) else None,
+                })
+            result = message.get("result")
+            decorated = isinstance(result, dict) and decorate_modes(result)
+            if decorated:
+                self.log("shim", {"event": "mode_presentation", "requestId": request_id})
+            if method == "initialize":
                 if isinstance(result, dict):
                     info = dict(result.get("agentInfo") or {})
                     info["title"] = AGENT_TITLE
@@ -438,28 +654,52 @@ class Bridge:
                         if isinstance(meta, dict):
                             meta.setdefault("mcpConfigPath", str(Path.home() / ".config/devin/mcp_config.json"))
                     return dump(message)
-            return frame
+            return dump(message) if decorated else frame
+        if message.get("method") == "fs/read_text_file":
+            self.track_read_progress(message)
         if message.get("method") == "session/update":
             update = (message.get("params") or {}).get("update")
             if not isinstance(update, dict):
                 return frame
             kind = update.get("sessionUpdate")
+            if kind == "config_option_update" and decorate_modes(update):
+                self.log("shim", {"event": "mode_presentation", "sessionId": message["params"].get("sessionId")})
+                return dump(message)
+            content = update.get("content")
+            if kind == "agent_message_chunk" and isinstance(content, dict) and content.get("type") == "text":
+                if content.get("text") == "The request was cancelled by the client.":
+                    session_id = message["params"].get("sessionId")
+                    with self.lock:
+                        cancelled = any(
+                            self.prompt_sessions.get(request_id) == session_id
+                            for request_id in self.cancelled_prompts
+                        )
+                    if cancelled:
+                        self.log("shim", {"event": "cancellation_message_suppressed", "sessionId": session_id})
+                        return None
             if kind == "tool_call":
                 tool_call_id = update.get("toolCallId")
                 if isinstance(tool_call_id, str) and isinstance(update.get("kind"), str):
                     self.tool_kinds[tool_call_id] = update["kind"]
             meta = terminal_meta(update, self.tool_kinds)
+            changed = False
             if meta is not None:
                 container = update.setdefault("_meta", {})
                 if isinstance(container, dict):
-                    changed = False
                     for key, value in meta.items():
                         if key not in container:
                             container[key] = value
                             changed = True
                     if changed:
                         self.log("shim", {"event": "terminal_meta", "toolCallId": update.get("toolCallId"), "fields": list(meta)})
-                        return dump(message)
+            if kind == "tool_call" and update.get("kind") == "read" and "client_view_file" in str(update.get("title", "")):
+                self.send_client(dump(message) if changed else frame)
+                self.track_read_progress(message)
+                return None
+            if kind == "tool_call_update" and update.get("status") in ("completed", "failed"):
+                self.track_read_progress(message)
+            if changed:
+                return dump(message)
             if kind == "available_commands_update":
                 commands = update.setdefault("availableCommands", [])
                 if isinstance(commands, list) and not any(
@@ -502,7 +742,8 @@ class Bridge:
         try:
             while (frame := read_frame(process.stdout)) is not None:
                 forwarded = self.from_agent(frame)
-                self.send_client(forwarded if forwarded.endswith(b"\n") else forwarded + b"\n")
+                if forwarded is not None:
+                    self.send_client(forwarded if forwarded.endswith(b"\n") else forwarded + b"\n")
         except ProtocolError as error:
             self.fail(str(error))
         except (OSError, ValueError):
@@ -514,7 +755,7 @@ class Bridge:
     def drain_stderr(self, process: subprocess.Popen) -> None:
         while chunk := process.stderr.read(8192):
             if self.debug is not None:
-                self.debug.write({"dir": "err", "data": chunk.decode("utf-8", "replace")[:4096]})
+                self.debug.write({"dir": "err", "bytes": len(chunk)})
 
     def run(self) -> int:
         try:
@@ -633,7 +874,7 @@ def main() -> int:
         help="Antigravity ACP server executable",
     )
     parser.add_argument("--spoof-zed", action="store_true", help="send clientInfo.name=zed only to Antigravity")
-    parser.add_argument("--debug", action="store_true", help="log all ACP traffic and upstream stderr to a file")
+    parser.add_argument("--debug", action="store_true", help="log redacted, bounded ACP traffic and stderr counts to a private file")
     parser.add_argument(
         "--debug-log",
         type=Path,

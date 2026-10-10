@@ -51,18 +51,26 @@ permissions, and client capabilities without rebuilding the conversation.
 `--spoof-zed` changes only the downstream `initialize.clientInfo.name`;
 `--registry-entry` prints a Desktop agent entry. Server arguments follow `--`.
 
-The shim marks its presence in-band: the `initialize` response `agentInfo`
-gains `title: "Antigravity (Devin shim)"` and a `+devin-shim` version suffix,
-a `/devin-shim` command is merged into `available_commands_update` (with
-`_meta.cognition.ai/category: "System"`) and answered locally (no model call)
-with bridge status, and `--debug`/`--debug-log` writes a JSONL traffic log to
-`~/.local/state/devin-better-acp/antigravity-acp.jsonl`.
+The shim identifies itself in-band as `Antigravity (DBA)`, appending a
+`+devin-shim` version suffix to the upstream version. A `/devin-shim` command is
+merged into `available_commands_update` (with `_meta.cognition.ai/category:
+"System"`) and answered locally (no model call). `--debug`/`--debug-log` writes
+bounded JSONL traces to `~/.local/state/devin-better-acp/antigravity-acp.jsonl`:
+files are mode `0600`, credential/header/environment fields are redacted, and
+upstream stderr is counted but never recorded as text.
 `--devin-config` merges MCP servers from `<workspace>/.devin/mcp_config*.json`,
 `<workspace>/.devin/config.json`, and `~/.config/devin/` (JSONC tolerated) into
 `session/new` and `session/load`, so Antigravity sees the same tools as Devin
 Local; client-supplied `mcpServers` always win on name conflicts, `disabled`
 entries are skipped, and the initialize result advertises
 `_meta.mcpConfigPath` pointing at `~/.config/devin/mcp_config.json`.
+
+Antigravity ACP 1.3 exposes only `default`, `auto_edit`, and `yolo` modes. The
+shim preserves `Default` and displays Auto Edit as `Code` and YOLO as
+`Bypass Permissions`, with Devin-style Lucide icons. It forwards original mode
+values unchanged.
+It does not advertise Smart, read-only Ask, or Plan modes: ACP 1.3 rejects those
+mode IDs, and relabeling Default as Ask would misrepresent its permissions.
 
 For rendering parity with Devin Local the shim synthesizes a
 `session_info_update` (prompt-text title, once per session) since Antigravity
@@ -83,14 +91,23 @@ Measured against `devin acp` (SWE-2): Devin Local puts no stdout in frames
 either — its exec calls stream the command into a `text/x-shellscript` preview
 content block and report `"Exited with code N"`, while real output lives in the
 client-owned terminal (`terminal/create`/`terminal/output` RPCs that
-Antigravity never issues; it executes internally). Antigravity `read`/`edit`
-updates carry no result body, so no "N lines" summary is possible without
-interposing `fs/*` results — out of scope.
+Antigravity never issues; it executes internally). For the `client_view_file`
+path only, the shim correlates a successful host `fs/read_text_file` response
+with exactly one pending read tool and completes it with the truthful line count;
+ambiguous, failed, internal, and unmatched reads remain untouched. File contents
+still pass directly to the provider through the existing `fs/*` response.
 
 The registry `icon` must be an `http(s)` URL — Devin Desktop ignores `data:`
-URIs and requires `Content-Type: image/svg+xml`. `images/antigravity-acp.svg`
-is the white-fill mark served via jsDelivr from `main`; update `--icon-url` if
-the repository URL changes.
+URIs and requires `Content-Type: image/svg+xml`. Its local-agent registry loader
+fetches SVGs asynchronously (5-second timeout, 512-KiB maximum) and registers
+the resulting data URL. `images/antigravity-acp.svg` is the white-fill mark
+served via jsDelivr from `main`; update `--icon-url` if the repository URL
+changes. The URL was verified to return HTTP 200, `image/svg+xml`, and the
+white-fill asset. The Desktop extension host also re-registers the original
+connector metadata when enabled-agent settings change, without retaining the
+previously fetched icon; this can restore the generic icon. A persistent
+fallback after a fresh registry load is a Desktop-side rendering/cache issue,
+not fixed by rewriting ACP session frames.
 
 `npm run test:acp` runs offline Python protocol tests and is included in
 `npm test`. Live Gemini checks must be explicitly authorized and use an
